@@ -126,3 +126,4 @@ By design, `/api/search` only ever returns `{ isScam: true | false }`. It
 never returns report text, reporter info, or evidence — that's a
 deliberate legal/privacy choice, not a missing feature.
 # reportregistrymainsite
+# reportregistrymainsite
