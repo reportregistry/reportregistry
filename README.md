@@ -1,9 +1,9 @@
-# ReportRegistry — Setup Guide
+# ReportRegistry: Setup Guide
 
 Free to file a report. Subscription required to search (search returns a
-yes/no scam verdict only — never the underlying report). Stack: Next.js on
+yes/no scam verdict only, never the underlying report). Stack: Next.js on
 Vercel, Clerk for auth, Supabase for database + file storage, Stripe for
-subscriptions. Your IONOS Cloud VPS is not used by this stack — it's only
+subscriptions. Your IONOS Cloud VPS is not used by this stack, it's only
 where the domain's DNS gets pointed at Vercel.
 
 ## 1. Supabase (database + storage)
@@ -17,14 +17,14 @@ where the domain's DNS gets pointed at Vercel.
 4. Go to **Project Settings > API** and copy:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (keep secret — never
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (keep secret, never
      expose this to the browser)
 5. Import existing reports (optional): go to **Table Editor > reports >
    Insert > Import data from CSV** and upload `reports_import.csv` (in the
    parent folder, one level up from this app). It's pre-formatted to match
    the table columns exactly, converted from the old Google Sheets data.
    Note: the report text was lightly cleaned up (profanity/insults toned
-   down) but not fully rewritten — skim it before it goes live, since
+   down) but not fully rewritten. Skim it before it goes live, since
    every row imports with `status = approved`, meaning it's immediately
    live in search results. Change rows to `pending` first in the CSV (or
    after import in Table Editor) if you'd rather review before publishing.
@@ -36,7 +36,7 @@ where the domain's DNS gets pointed at Vercel.
    - `Publishable key` → `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
    - `Secret key` → `CLERK_SECRET_KEY`
 3. Defaults in `.env.local.example` already point Clerk's sign-in/up flows
-   at `/sign-in`, `/sign-up`, and post-auth redirects to `/dashboard` — no
+   at `/sign-in`, `/sign-up`, and post-auth redirects to `/dashboard`. No
    extra config needed in Clerk's dashboard for this.
 
 ## 3. Stripe (subscriptions + priority-search credits)
@@ -45,10 +45,10 @@ Three products, three prices:
 
 1. In the Stripe dashboard, go to **Product catalog > Add product** and
    create three prices:
-   - Monthly subscription, $7.49/month, recurring → `STRIPE_PRICE_ID_MONTHLY`
+   - Monthly subscription, $7.99/month, recurring → `STRIPE_PRICE_ID_MONTHLY`
    - Annual subscription, $74.99/year, recurring → `STRIPE_PRICE_ID_ANNUAL`
    - Priority-search credit pack, $10 one-time (grants 50 credits, handled
-     in code — nothing to configure on Stripe's side beyond the price
+     in code, nothing to configure on Stripe's side beyond the price
      itself being one-time, not recurring) → `STRIPE_PRICE_ID_CREDITS`
 2. Go to **Developers > API keys** and copy the **Secret key** →
    `STRIPE_SECRET_KEY`.
@@ -62,7 +62,7 @@ Three products, three prices:
 
 ## 4. Anthropic (not used)
 
-The "smart report" screenshot auto-fill feature was removed -- reports are
+The "smart report" screenshot auto-fill feature was removed. Reports are
 reviewed manually by staff instead. `ANTHROPIC_API_KEY` in `.env.local` can
 be left blank; nothing reads it.
 
@@ -110,7 +110,7 @@ and bulk-report unlocked once the webhook fires.
 
 ## Moderation & deletion (MVP)
 
-There's no admin panel yet — moderation happens directly in Supabase:
+There's no admin panel yet, moderation happens directly in Supabase:
 
 - **Approve a report** (so it counts in search results): Table Editor >
   `reports` > change `status` from `pending` to `approved`.
@@ -123,7 +123,7 @@ on top of the same `reports` table.
 ## What search actually returns
 
 By design, `/api/search` only ever returns `{ isScam: true | false }`. It
-never returns report text, reporter info, or evidence — that's a
+never returns report text, reporter info, or evidence. That's a
 deliberate legal/privacy choice, not a missing feature.
 # reportregistrymainsite
 # reportregistrymainsite

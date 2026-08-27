@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 type Result = { inserted: number; skipped: { line: number; reason: string }[] } | null;
 
-const PLACEHOLDER = `Paste your list here — one entry per line, any format, e.g.:
+const PLACEHOLDER = `Paste your list here, one entry per line, any format, e.g.:
 
 +1 (555) 123-4567, John, asked for gift cards then vanished
 scammer@fake.com - took a deposit and ghosted
@@ -51,7 +51,7 @@ export default function BulkReportForm() {
   return (
     <div className="mx-auto max-w-2xl rounded-xl border border-border bg-card p-8 text-left">
       <p className="mb-2 text-sm text-muted">
-        Just paste your list — one entry per line, no set format. We'll
+        Just paste your list, one entry per line, no set format. We'll
         pull out any phone numbers and emails automatically; whatever else
         is on the line becomes the report notes. Each line needs at least
         one phone number or email to be counted.

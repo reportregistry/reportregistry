@@ -24,7 +24,7 @@ export default async function DashboardPage() {
         <div className="mx-auto mt-10 max-w-md rounded-xl border border-orange bg-orange/10 p-8">
           <p className="text-sm text-muted">
             Supabase isn't configured yet, so search can't run. Sign-in
-            works fine — add your Supabase keys to `.env.local` to unlock
+            works fine, add your Supabase keys to `.env.local` to unlock
             this page.
           </p>
         </div>
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         <div className="mx-auto mt-10 max-w-md rounded-xl border border-border bg-card p-8">
           <p className="mb-6 text-muted">
             Search is subscriber-only. Subscribe to check any phone number
-            for scam reports — filing a report yourself is always free.
+            for scam reports. Filing a report yourself is always free.
           </p>
           <SubscribeButton />
         </div>

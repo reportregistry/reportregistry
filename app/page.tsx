@@ -13,7 +13,7 @@ export default function HomePage() {
           they get you.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-base text-muted sm:text-lg">
-          Search any phone number and get a clear scam verdict — subscribers
+          Search any phone number and get a clear scam verdict, subscribers
           only. Filing a report is always free and helps protect the next
           person.
         </p>

@@ -142,7 +142,7 @@ export default function ReportForm() {
   if (done) {
     return (
       <div className="mx-auto max-w-lg rounded-xl border border-orange bg-orange/10 p-8 text-center">
-        <p className="font-semibold">Thanks — your report was submitted.</p>
+        <p className="font-semibold">Thanks, your report was submitted.</p>
         <p className="mt-2 text-sm text-muted">
           It'll be reviewed before it appears in search results. No charge,
           ever, for filing a report.
@@ -350,7 +350,7 @@ export default function ReportForm() {
                 immediately (911 in the US).
               </p>
               <p className="mt-2 text-xs text-muted">
-                Filing a report here does not notify police — it only adds
+                Filing a report here does not notify police. It only adds
                 to this registry. For your safety, please report threats
                 directly to law enforcement as well.
               </p>
@@ -360,7 +360,7 @@ export default function ReportForm() {
           {scamType === 'Other' && (
             <div>
               <label className="mb-2 block text-sm text-muted">
-                Please specify (only visible to admins — never shown to
+                Please specify (only visible to admins, never shown to
                 subscribers or the public)
               </label>
               <input

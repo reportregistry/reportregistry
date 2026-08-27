@@ -27,7 +27,7 @@ export default function PrivacyPage() {
             <h2 className="mb-2 text-base font-bold text-white">2. Who can see what</h2>
             <p>
               The public and paying subscribers only ever see a yes/no verdict
-              when they search a number or email — never the report text,
+              when they search a number or email, never the report text,
               evidence, or reporter's identity. Full report details are visible
               only to site administrators for moderation purposes.
             </p>

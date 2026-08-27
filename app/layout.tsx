@@ -5,7 +5,7 @@ import SiteHeader from './components/SiteHeader';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ReportRegistry.com — Report Scammers, Spam & Fraud',
+  title: 'ReportRegistry.com: Report Scammers, Spam & Fraud',
   description:
     'A searchable registry for scam and spam phone numbers. Search requires a subscription, reporting is always free.',
 };

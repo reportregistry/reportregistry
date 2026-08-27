@@ -63,7 +63,7 @@ export default async function AdminPage() {
           <p className="mt-2 text-sm text-muted">
             Approve a report to make it count as "flagged" in search results.
             Remove a report to take it down entirely. Full contents here are
-            never shown to subscribers or the public — only the yes/no
+            never shown to subscribers or the public, only the yes/no
             verdict is.
           </p>
           <div className="mt-6">

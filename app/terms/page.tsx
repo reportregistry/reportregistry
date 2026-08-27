@@ -57,8 +57,8 @@ export default function TermsPage() {
               submitted it.
             </p>
             <p className="mt-2">
-              If we receive a valid legal request from law enforcement — such as
-              a subpoena, court order, or other lawful process — seeking
+              If we receive a valid legal request from law enforcement, such as
+              a subpoena, court order, or other lawful process, seeking
               information related to a report we have reason to believe is
               false, we will cooperate with that request. This may include
               surrendering the reporting account's identifying information (name,
@@ -72,7 +72,7 @@ export default function TermsPage() {
             <p>
               Reports are reviewed before they affect search results. Search
               results only ever show a yes/no verdict on whether a phone number or
-              email has an approved report against it — we do not publish the
+              email has an approved report against it. We do not publish the
               underlying report text, evidence, or the reporting party's identity
               to subscribers or the public.
             </p>
@@ -97,7 +97,7 @@ export default function TermsPage() {
             <p>
               ReportRegistry is provided "as is." A "no scam reports found"
               result is not a guarantee that a person or number is safe to deal
-              with — it only reflects what has been reported to us. We make no
+              with. It only reflects what has been reported to us. We make no
               warranty as to the accuracy or completeness of any report or
               search result.
             </p>

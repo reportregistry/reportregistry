@@ -116,7 +116,7 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
           }`}
         >
           {result.isScam
-            ? '⚠️ Flagged as a scam — reports have been filed on this contact.'
+            ? '⚠️ Flagged as a scam. Reports have been filed on this contact.'
             : '✅ No scam reports found for this contact.'}
         </div>
       )}
@@ -135,7 +135,7 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
             {deepDiveState === 'submitting'
               ? 'Submitting…'
               : credits <= 0
-              ? 'No credits left — buy a 50-pack above'
+              ? 'No credits left, buy a 50-pack above'
               : 'Request a deeper dive (1 credit)'}
           </button>
           {deepDiveError && <p className="mt-2 text-xs text-red">{deepDiveError}</p>}
@@ -144,7 +144,7 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
 
       {deepDiveState === 'done' && (
         <div className="mt-3 rounded-lg border border-orange bg-orange/10 p-4 text-center text-sm">
-          Submitted — an admin will manually look into this one.
+          Submitted. An admin will manually look into this one.
         </div>
       )}
     </div>

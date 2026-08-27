@@ -32,7 +32,7 @@ export default function BuyCreditsButton() {
       disabled={loading}
       className="rounded-full border border-orange/40 px-3 py-1 text-xs font-medium text-orange transition hover:bg-orange/10 disabled:opacity-60"
     >
-      {loading ? 'Redirecting…' : '+ Buy 50 priority searches — $10'}
+      {loading ? 'Redirecting...' : '+ Buy 50 priority searches, $10'}
     </button>
   );
 }

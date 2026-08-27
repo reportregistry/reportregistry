@@ -38,7 +38,7 @@ export default async function BulkReportPage() {
       <h1 className="text-3xl font-extrabold">Bulk Report</h1>
       <p className="mx-auto mt-3 max-w-lg text-muted">
         Paste a whole list of contacts to report at once. Subscriber-only,
-        same as search — filing reports one at a time on the{' '}
+        same as search. Filing reports one at a time on the{' '}
         <Link href="/report" className="text-orange">
           public report page
         </Link>{' '}
