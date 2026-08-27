@@ -23,7 +23,7 @@ export default function SiteHeader() {
           <SignedOut>
             <Link
               href="/sign-in"
-              className="whitespace-nowrap rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition hover:border-white/30 hover:text-white sm:px-4 sm:py-2 sm:text-sm"
+              className="whitespace-nowrap rounded-lg border border-white/20 px-3 py-1.5 text-xs font-medium text-white/80 transition hover:border-white/40 hover:text-white sm:px-4 sm:py-2 sm:text-sm"
             >
               Sign In
             </Link>
