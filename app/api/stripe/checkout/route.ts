@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       customer_email: email,
       client_reference_id: userId,
+      allow_promotion_codes: true,
       success_url: `${baseUrl}/dashboard?${plan === 'credits' ? 'credits=1' : 'subscribed=1'}`,
       cancel_url: `${baseUrl}/dashboard`,
       metadata: { clerk_user_id: userId, plan },
