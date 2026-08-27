@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from '@vercel/analytics/next';
+import SiteHeader from './components/SiteHeader';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body>
+          <SiteHeader />
           {children}
           <Analytics />
           <footer className="border-t border-border px-6 py-8 text-center text-xs text-muted">
