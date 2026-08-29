@@ -3,9 +3,12 @@ import { auth } from '@clerk/nextjs/server';
 import { getServiceClient } from '@/lib/supabase';
 import { normalizePhone } from '@/lib/phone';
 
-// Subscriber-only. Deliberately returns ONLY { isScam: boolean } — never the
-// underlying report text, reporter info, or evidence — per the product
-// decision to keep search a yes/no verdict, not a public dossier.
+// Subscriber-only. Returns per-category report counts (via the
+// search_category_counts SQL function) plus a derived isScam/totalReports
+// summary -- but NEVER the underlying report text, reporter info, or
+// evidence. Categories are the only detail search exposes; a report's
+// free-text description and who filed it stay admin-only regardless of
+// how many categories are shown here.
 export async function GET(req: NextRequest) {
   const { userId } = auth();
   if (!userId) {
@@ -36,23 +39,46 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // phone_numbers / subject_emails are arrays (a scammer can have more
-  // than one on file), so matching uses Postgres array "contains" (@>)
-  // rather than equality.
-  let query = supabase.from('reports').select('id').eq('status', 'approved');
+  // search_category_counts (supabase/schema.sql) unnests scam_type across
+  // every approved report matching this phone/email and returns a count
+  // per category -- a report with two categories counts once toward EACH
+  // category, so summing categoryCounts is NOT the same as the number of
+  // reports. totalReports below is the real, non-duplicated report count,
+  // fetched separately (same array-contains match as before).
+  const { data: rows, error: categoryError } = await supabase.rpc('search_category_counts', {
+    p_phone: phone || null,
+    p_email: email || null,
+  });
+
+  if (categoryError) {
+    return NextResponse.json({ error: categoryError.message }, { status: 500 });
+  }
+
+  let countQuery = supabase
+    .from('reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'approved');
   if (phone && email) {
-    query = query.or(`phone_numbers.cs.{${phone}},subject_emails.cs.{${email}}`);
+    countQuery = countQuery.or(`phone_numbers.cs.{${phone}},subject_emails.cs.{${email}}`);
   } else if (phone) {
-    query = query.contains('phone_numbers', [phone]);
+    countQuery = countQuery.contains('phone_numbers', [phone]);
   } else if (email) {
-    query = query.contains('subject_emails', [email]);
+    countQuery = countQuery.contains('subject_emails', [email]);
   }
 
-  const { data: reports, error } = await query.limit(1);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const { count: totalReports, error: countError } = await countQuery;
+  if (countError) {
+    return NextResponse.json({ error: countError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ isScam: (reports?.length ?? 0) > 0 });
+  const categoryCounts: Record<string, number> = {};
+  for (const row of rows || []) {
+    categoryCounts[row.category] = Number(row.report_count);
+  }
+
+  return NextResponse.json({
+    isScam: (totalReports ?? 0) > 0,
+    totalReports: totalReports ?? 0,
+    categoryCounts,
+  });
 }

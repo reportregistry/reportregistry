@@ -14,16 +14,25 @@
 -- are arrays. At least one entry across the two is required.
 --
 -- `description` is written by the reporter (what happened, plus the
--- free-text explanation when scam_type is 'Other') and is NEVER exposed
--- by the search API -- subscribers and the public only ever see a yes/no
--- verdict. It's for admin/moderation eyes only.
+-- free-text explanation when scam_type includes 'Other') and is NEVER
+-- exposed by the search API -- subscribers and the public only ever see
+-- per-category report counts, not the underlying text. It's for
+-- admin/moderation eyes only.
+--
+-- scam_type is an array (not a single value) because a reporter can pick
+-- more than one category on a single report -- e.g. someone who
+-- no-showed AND was threatening gets both 'Flake-No Show' and
+-- 'Threats/Dangerous' on the same row, rather than forcing two separate
+-- submissions. search_category_counts() below unnests this array to
+-- produce the per-category totals shown to subscribers.
 create table if not exists reports (
   id uuid primary key default gen_random_uuid(),
   phone_numbers text[] default '{}',
   subject_emails text[] default '{}',
   subject_first_name text,
-  scam_type text, -- Scammer/Spam Caller | Fake Email/Link | Flake-No Show | Threats/Dangerous | Fake Payment | Other
+  scam_type text[] default '{}', -- any of: Scammer/Spam Caller | Fake Email/Link | Flake-No Show | Threats/Dangerous | Fake Payment | Other
   description text not null,
+  reporter_name text,
   reporter_email text,
   reporter_phone text,
   evidence_urls text[] default '{}',
@@ -42,19 +51,30 @@ create index if not exists idx_reports_subject_emails on reports using gin (subj
 create index if not exists idx_reports_status on reports (status);
 
 -- Subscribers: one row per Clerk user, kept in sync by the Stripe webhook.
--- Search access is gated on status = 'active'. search_credits is the
--- "priority search" balance -- spent one at a time to request an admin
--- deep-dive on a number/email that came back with no report on file (see
--- deep_dive_requests below). plan is informational only (monthly vs
--- annual) and doesn't gate anything by itself.
+-- Search access is gated on status = 'active'. Priority-search credits are
+-- split into two pools so they can be reset independently:
+--   - search_credits: the free monthly allowance. Set to 20 the moment
+--     someone subscribes, then reset back to exactly 20 every month by
+--     the /api/cron/reset-credits job -- NOT additive, whatever's unused
+--     is wiped, no rollover.
+--   - purchased_credits: from the $10/50-credit pack or a manual admin
+--     top-up in /admin. Never touched by the monthly reset, only ever
+--     increased via increment_purchased_credits and spent via
+--     use_search_credit (which draws from search_credits first, then
+--     this pool).
+-- plan is informational only (monthly vs annual) and doesn't gate
+-- anything by itself. email is captured from Stripe checkout purely so
+-- the admin subscriber list has something human-readable to show.
 create table if not exists subscribers (
   id uuid primary key default gen_random_uuid(),
   clerk_user_id text unique not null,
+  email text,
   stripe_customer_id text,
   stripe_subscription_id text,
   status text not null default 'inactive', -- active | past_due | canceled | inactive
   plan text, -- monthly | annual
   search_credits integer not null default 0,
+  purchased_credits integer not null default 0,
   current_period_end timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -80,6 +100,39 @@ create table if not exists deep_dive_requests (
 create index if not exists idx_deep_dive_status on deep_dive_requests (status);
 create index if not exists idx_deep_dive_clerk on deep_dive_requests (clerk_user_id);
 
+-- Search's core aggregation: for a given phone and/or email, count how
+-- many approved reports include each category. A report with two
+-- categories (e.g. Flake-No Show + Threats/Dangerous) counts once toward
+-- each, not once total. Reports with no category picked count under
+-- 'Unspecified' rather than being dropped, so the counts always sum to
+-- the total number of matching reports. Called via supabase.rpc(...)
+-- from /api/search -- this is the ONLY thing search ever reveals about a
+-- report; the description, evidence, and reporter identity never leave
+-- this function.
+create or replace function search_category_counts(p_phone text, p_email text)
+returns table(category text, report_count bigint)
+language sql
+stable
+as $$
+  select
+    coalesce(t, 'Unspecified') as category,
+    count(*) as report_count
+  from reports r
+  left join lateral unnest(
+    case when coalesce(array_length(r.scam_type, 1), 0) > 0
+      then r.scam_type
+      else array['Unspecified']
+    end
+  ) as t on true
+  where r.status = 'approved'
+    and (
+      (p_phone is not null and r.phone_numbers @> array[p_phone])
+      or (p_email is not null and r.subject_emails @> array[p_email])
+    )
+  group by coalesce(t, 'Unspecified')
+  order by report_count desc;
+$$;
+
 -- Locks tables down to service-role access only (the app never queries
 -- these with the anon/public key, so this closes off the public
 -- PostgREST API entirely -- no policies needed on top of this).
@@ -91,30 +144,49 @@ alter table deep_dive_requests enable row level security;
 -- update, so two near-simultaneous requests can't both succeed off the
 -- same last credit (a plain "read balance, then update" from the API
 -- layer would have that race).
-create or replace function increment_search_credits(p_clerk_user_id text, p_amount integer)
+
+-- Adds to the "purchased" pool (from the $10/50 pack or a manual admin
+-- top-up in /admin) -- this pool is never touched by the monthly free
+-- credit reset, unlike search_credits.
+create or replace function increment_purchased_credits(p_clerk_user_id text, p_amount integer)
 returns void
 language sql
 as $$
   update subscribers
-  set search_credits = search_credits + p_amount,
+  set purchased_credits = purchased_credits + p_amount,
       updated_at = now()
   where clerk_user_id = p_clerk_user_id;
 $$;
 
+-- Spends one credit, drawing from the free monthly pool (search_credits)
+-- first since that one resets to 20 every month anyway (use it or lose
+-- it), then falling back to purchased_credits (which never expires) if
+-- the free pool is empty.
 create or replace function use_search_credit(p_clerk_user_id text)
 returns boolean
 language plpgsql
 as $$
 declare
-  remaining integer;
+  free_remaining integer;
+  purchased_remaining integer;
 begin
   update subscribers
   set search_credits = search_credits - 1,
       updated_at = now()
   where clerk_user_id = p_clerk_user_id and search_credits > 0
-  returning search_credits into remaining;
+  returning search_credits into free_remaining;
 
-  return remaining is not null;
+  if free_remaining is not null then
+    return true;
+  end if;
+
+  update subscribers
+  set purchased_credits = purchased_credits - 1,
+      updated_at = now()
+  where clerk_user_id = p_clerk_user_id and purchased_credits > 0
+  returning purchased_credits into purchased_remaining;
+
+  return purchased_remaining is not null;
 end;
 $$;
 

@@ -2,8 +2,22 @@
 
 import { useState } from 'react';
 import BuyCreditsButton from './BuyCreditsButton';
+import { SCAM_TYPES } from '@/lib/scamTypes';
 
-type Result = { isScam: boolean } | null;
+type Result = {
+  isScam: boolean;
+  totalReports: number;
+  categoryCounts: Record<string, number>;
+} | null;
+
+// Traffic-light thresholds for a single category's count: clean at 0,
+// a caution zone once there's a report but it's not a pattern yet, and a
+// hard warning once it stacks up. Applies per-category, not to the total.
+function countColorClass(count: number): string {
+  if (count === 0) return 'text-green-400';
+  if (count <= 7) return 'text-orange';
+  return 'text-red';
+}
 
 export default function SearchBox({ initialCredits }: { initialCredits: number }) {
   const [query, setQuery] = useState('');
@@ -116,8 +130,32 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
           }`}
         >
           {result.isScam
-            ? '⚠️ Flagged as a scam. Reports have been filed on this contact.'
+            ? `⚠️ ${result.totalReports} report${result.totalReports === 1 ? '' : 's'} on file for this contact.`
             : '✅ No scam reports found for this contact.'}
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-3 space-y-1.5 rounded-lg border border-border bg-card p-4 text-sm">
+          {/* Every category always shows, even at 0, so the color itself
+              tells the story: green means clean, not just "no data yet". */}
+          {SCAM_TYPES.map((category) => {
+            const count = result.categoryCounts[category] ?? 0;
+            return (
+              <div key={category} className="flex items-center justify-between">
+                <span className="text-muted">{category}</span>
+                <span className={`font-semibold ${countColorClass(count)}`}>{count}</span>
+              </div>
+            );
+          })}
+          {result.categoryCounts['Unspecified'] > 0 && (
+            <div className="flex items-center justify-between border-t border-border pt-1.5">
+              <span className="text-muted">Uncategorized</span>
+              <span className={`font-semibold ${countColorClass(result.categoryCounts['Unspecified'])}`}>
+                {result.categoryCounts['Unspecified']}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

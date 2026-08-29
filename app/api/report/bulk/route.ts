@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       phone_numbers: phones,
       subject_emails: emails,
       subject_first_name: null,
-      scam_type: null,
+      scam_type: [],
       description,
       reporter_email: reporterEmail,
       reporter_phone: reporterPhone,

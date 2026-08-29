@@ -3,15 +3,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { getServiceClient } from '@/lib/supabase';
 import { normalizePhone } from '@/lib/phone';
 import { verifyTurnstileToken } from '@/lib/turnstile';
-
-const SCAM_TYPES = [
-  'Scammer/Spam Caller',
-  'Fake Email/Link',
-  'Flake-No Show',
-  'Threats/Dangerous',
-  'Fake Payment',
-  'Other',
-];
+import { SCAM_TYPES } from '@/lib/scamTypes';
 
 function cleanEmail(raw: FormDataEntryValue | null): string | null {
   const v = (raw as string)?.trim().toLowerCase();
@@ -26,20 +18,17 @@ function firstNameOnly(raw: FormDataEntryValue | null): string | null {
   return v.split(/\s+/)[0] || null;
 }
 
-// Filing a report is always free, but requires a signed-in account
-// (enforced by middleware.ts -- this route is in the protected list, so
-// userId below is never actually null in practice; the check is just
-// defense in depth). Reporter contact info comes straight from their
-// Clerk account rather than a manual form field, since they're always
-// signed in here. New reports land as 'pending' and only show up in
-// search once approved (see supabase/schema.sql for the moderation
-// workflow).
+// Filing a report is always free and does NOT require an account
+// (middleware.ts deliberately leaves this route unprotected). If the
+// filer is signed in, their reporter contact info comes straight from
+// their Clerk account. If not, the form requires them to manually type
+// their own name + phone/email instead, so every report stays
+// traceable even from anonymous filers. New reports land as 'pending'
+// and only show up in search once approved (see supabase/schema.sql for
+// the moderation workflow).
 export async function POST(req: NextRequest) {
   try {
     const { userId } = auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
 
     const formData = await req.formData();
 
@@ -65,12 +54,16 @@ export async function POST(req: NextRequest) {
 
     const subject_first_name = firstNameOnly(formData.get('subject_name'));
 
-    const scam_type_raw = (formData.get('scam_type') as string) || '';
-    const scam_type = SCAM_TYPES.includes(scam_type_raw) ? scam_type_raw : null;
+    // One report can have more than one category (e.g. a no-show who was
+    // also threatening), so this is every valid value the client sent,
+    // deduped -- not just the first one.
+    const scam_type = Array.from(
+      new Set(formData.getAll('scam_type').filter((t): t is string => SCAM_TYPES.includes(t as string)))
+    );
     const otherDetails = (formData.get('scam_type_other') as string)?.trim();
 
     let description = (formData.get('description') as string)?.trim() || '';
-    if (scam_type === 'Other' && otherDetails) {
+    if (scam_type.includes('Other') && otherDetails) {
       // Admin-only detail on what "Other" means here -- never surfaced by
       // the search API, same as the rest of `description`.
       description = `[Other: ${otherDetails}] ${description}`.trim();
@@ -83,6 +76,38 @@ export async function POST(req: NextRequest) {
         { error: 'A phone number or email for the person you\'re reporting, plus a description, are required.' },
         { status: 400 }
       );
+    }
+
+    // Reporter contact: pulled from Clerk if signed in, otherwise from the
+    // manually-typed "Your info" fields (required client-side when signed
+    // out, re-checked here server-side too, and checked before the evidence
+    // upload below so a rejected anonymous submission doesn't still write a
+    // file to storage). Kept private either way, never shown to subscribers
+    // or the public, used only to follow up on disputes or a
+    // law-enforcement request per the Terms.
+    let finalReporterEmail: string | null = null;
+    let finalReporterPhone: string | null = null;
+    let reporterName: string | null = null;
+
+    if (userId) {
+      const reporterUser = await currentUser();
+      finalReporterEmail = reporterUser?.emailAddresses?.[0]?.emailAddress || null;
+      finalReporterPhone = normalizePhone(reporterUser?.phoneNumbers?.[0]?.phoneNumber) || null;
+      reporterName = reporterUser?.firstName || null;
+    } else {
+      reporterName = ((formData.get('reporter_name') as string) || '').trim() || null;
+      finalReporterEmail = cleanEmail(formData.get('reporter_email'));
+      finalReporterPhone = normalizePhone(formData.get('reporter_phone') as string);
+
+      if (!reporterName || (!finalReporterEmail && !finalReporterPhone)) {
+        return NextResponse.json(
+          {
+            error:
+              "Since you're not signed in, your name plus a phone number or email is required so the report is traceable.",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const supabase = getServiceClient();
@@ -110,20 +135,13 @@ export async function POST(req: NextRequest) {
       evidence_urls.push(publicUrl.publicUrl);
     }
 
-    // Reporter contact comes from their Clerk account (they're always
-    // signed in to reach this route) -- kept private, never shown to
-    // subscribers or the public, used only to follow up on disputes.
-    const reporterUser = await currentUser();
-    const finalReporterEmail = reporterUser?.emailAddresses?.[0]?.emailAddress || null;
-    const finalReporterPhone =
-      normalizePhone(reporterUser?.phoneNumbers?.[0]?.phoneNumber) || null;
-
     const { error: insertError } = await supabase.from('reports').insert({
       phone_numbers: phones,
       subject_emails: emails,
       subject_first_name,
       scam_type,
       description,
+      reporter_name: reporterName,
       reporter_email: finalReporterEmail,
       reporter_phone: finalReporterPhone,
       evidence_urls,

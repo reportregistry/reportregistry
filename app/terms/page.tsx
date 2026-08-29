@@ -71,10 +71,12 @@ export default function TermsPage() {
             <h2 className="mb-2 text-base font-bold text-white">5. What we publish</h2>
             <p>
               Reports are reviewed before they affect search results. Search
-              results only ever show a yes/no verdict on whether a phone number or
-              email has an approved report against it. We do not publish the
-              underlying report text, evidence, or the reporting party's identity
-              to subscribers or the public.
+              results show whether a phone number or email has any approved
+              reports on file and, if so, a count of how many reports fall
+              into each category (for example, "Flake-No Show" or
+              "Threats/Dangerous"). We do not publish the underlying report
+              text, evidence, or the reporting party's identity to
+              subscribers or the public under any circumstance.
             </p>
           </section>
 

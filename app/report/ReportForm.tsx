@@ -2,15 +2,8 @@
 
 import { useState } from 'react';
 import Script from 'next/script';
-
-const SCAM_TYPES = [
-  'Scammer/Spam Caller',
-  'Fake Email/Link',
-  'Flake-No Show',
-  'Threats/Dangerous',
-  'Fake Payment',
-  'Other',
-];
+import { useUser } from '@clerk/nextjs';
+import { SCAM_TYPES } from '@/lib/scamTypes';
 
 // Common country dial codes. Picking one just pre-fills the "+XX" prefix
 // on the number field next to it -- the actual submitted value is
@@ -77,16 +70,25 @@ function SelectChevron() {
   );
 }
 
-// Filing a report requires being signed in (enforced by middleware), so
-// the reporter's own contact info comes from their Clerk account
-// server-side -- no need to ask for it here. The person being reported
-// starts with just a phone number field; email and second entries are
-// opt-in via the buttons below, to keep the common case (one number) fast.
+// Filing a report is free and doesn't require an account. Anonymous
+// filers have to manually provide their own name + a phone or email so
+// the report isn't fully untraceable (see the "Your info" section
+// below); signed-in subscribers skip that since it comes from their
+// Clerk session server-side instead. The person being reported starts
+// with just a phone number field; email and second entries are opt-in
+// via the buttons below, to keep the common case (one number) fast.
 export default function ReportForm() {
+  const { isSignedIn, isLoaded } = useUser();
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
-  const [scamType, setScamType] = useState('');
+  // Multiple categories can apply to one report (e.g. a no-show who also
+  // made threats), so this is an array, not a single value.
+  const [scamTypes, setScamTypes] = useState<string[]>([]);
+
+  function toggleScamType(t: string) {
+    setScamTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
 
   const [showPhone2, setShowPhone2] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
@@ -117,9 +119,25 @@ export default function ReportForm() {
     const email = (formData.get('subject_email') as string)?.trim();
     const email2 = (formData.get('subject_email_2') as string)?.trim();
 
+    // scamTypes is plain React state, not a real form field (the category
+    // picker below is buttons, not checkboxes), so it has to be added to
+    // the outgoing FormData by hand.
+    formData.delete('scam_type');
+    scamTypes.forEach((t) => formData.append('scam_type', t));
+
     if (!phone && !phone2 && !email && !email2) {
       setError("Provide at least one phone number or email for the person you're reporting.");
       return;
+    }
+
+    if (!isSignedIn) {
+      const reporterName = ((formData.get('reporter_name') as string) || '').trim();
+      const reporterEmail = ((formData.get('reporter_email') as string) || '').trim();
+      const reporterPhone = ((formData.get('reporter_phone') as string) || '').trim();
+      if (!reporterName || (!reporterEmail && !reporterPhone)) {
+        setError('Since you\'re not signed in, please provide your name and either your phone number or email so we can verify the report.');
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -177,6 +195,55 @@ export default function ReportForm() {
           </p>
         </div>
       </section>
+
+      {isLoaded && !isSignedIn && (
+        <section className="mt-8 border-t border-border pt-6">
+          <h2 className="mb-5 text-xs font-bold uppercase tracking-wide text-orange">
+            Your info
+          </h2>
+          <div className="space-y-5">
+            <p className="text-xs text-muted">
+              Not signed in, so we need a way to verify this report is real.
+              Your name and contact info are never shown to subscribers or
+              the public, only visible to admins.
+            </p>
+            <div>
+              <label className="mb-2 block text-sm text-muted">
+                Your name *
+              </label>
+              <input
+                name="reporter_name"
+                type="text"
+                className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-orange"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm text-muted">
+                Your phone number
+              </label>
+              <input
+                name="reporter_phone"
+                type="tel"
+                className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-orange"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm text-muted">
+                Your email
+              </label>
+              <input
+                name="reporter_email"
+                type="email"
+                className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-orange"
+              />
+            </div>
+            <p className="text-xs italic text-muted">
+              At least one of phone or email above is required, along with
+              your name.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="mt-8 border-t border-border pt-6">
         <h2 className="mb-5 text-xs font-bold uppercase tracking-wide text-[#5aa9e6]">
@@ -319,30 +386,36 @@ export default function ReportForm() {
         </h2>
         <div className="space-y-5">
           <div>
-            <label className="mb-2 block text-sm text-muted">Type</label>
-            <div className="relative">
-              <select
-                name="scam_type"
-                value={scamType}
-                onChange={(e) => setScamType(e.target.value)}
-                className={`w-full appearance-none rounded-lg border border-border bg-navy px-4 py-3 pr-8 outline-none focus:border-[#a78bfa] ${
-                  scamType ? 'text-white' : 'text-muted'
-                }`}
-              >
-                <option value="" className="text-muted">
-                  Select one
-                </option>
-                {SCAM_TYPES.map((t) => (
-                  <option key={t} value={t} className="text-white">
+            <label className="mb-2 block text-sm text-muted">
+              Type (select all that apply)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {SCAM_TYPES.map((t) => {
+                const selected = scamTypes.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleScamType(t)}
+                    aria-pressed={selected}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      selected
+                        ? 'border-[#a78bfa] bg-[#a78bfa]/15 text-[#a78bfa]'
+                        : 'border-border text-muted hover:border-[#a78bfa]/40 hover:text-white'
+                    }`}
+                  >
                     {t}
-                  </option>
-                ))}
-              </select>
-              <SelectChevron />
+                  </button>
+                );
+              })}
             </div>
+            <p className="mt-2 text-xs italic text-muted">
+              Optional, but picking a category (or more than one) helps
+              subscribers get an accurate picture when they search.
+            </p>
           </div>
 
-          {scamType === 'Threats/Dangerous' && (
+          {scamTypes.includes('Threats/Dangerous') && (
             <div className="rounded-lg border border-red bg-red/10 p-4 text-sm">
               <p className="font-semibold text-red">
                 If you feel unsafe or are in danger right now, please
@@ -357,7 +430,7 @@ export default function ReportForm() {
             </div>
           )}
 
-          {scamType === 'Other' && (
+          {scamTypes.includes('Other') && (
             <div>
               <label className="mb-2 block text-sm text-muted">
                 Please specify (only visible to admins, never shown to

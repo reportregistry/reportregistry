@@ -1,16 +1,17 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Routes that require a signed-in user. A free account is required for
-// everything on the site, including filing a report -- it's still free
-// (no payment), just not anonymous. The separate paywall (subscription
-// status) is checked inside /dashboard and the search/bulk-report routes.
+// Routes that require a signed-in user. Filing a report ("/report",
+// "/api/report") is deliberately NOT gated here -- anyone can file for
+// free without an account, they just have to manually provide their own
+// name + phone/email in the form instead of it coming from a Clerk
+// session. Signed-in subscribers get that part auto-filled instead (see
+// ReportForm.tsx / api/report/route.ts). The paywall (subscription
+// status) is checked separately inside /dashboard and the search routes.
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
-  '/report(.*)',
   '/admin(.*)',
   '/api/search(.*)',
-  '/api/report(.*)',
   '/api/admin(.*)',
   '/api/stripe/checkout(.*)',
   '/api/stripe/portal(.*)',

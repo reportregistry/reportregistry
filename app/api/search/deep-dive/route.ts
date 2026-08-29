@@ -62,7 +62,10 @@ export async function POST(req: NextRequest) {
 
   if (insertError) {
     // Credit was already spent -- refund it rather than silently eating it.
-    await supabase.rpc('increment_search_credits', { p_clerk_user_id: userId, p_amount: 1 });
+    // Refunds always go to the purchased pool (simpler than tracking which
+    // of the two pools use_search_credit drew from, and it never expires
+    // so the refund isn't at risk of being wiped by the monthly reset).
+    await supabase.rpc('increment_purchased_credits', { p_clerk_user_id: userId, p_amount: 1 });
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 

@@ -3,6 +3,7 @@ import { isAdminEmail } from '@/lib/admin';
 import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
 import AdminReportList from './AdminReportList';
 import AdminDeepDiveList from './AdminDeepDiveList';
+import AdminSubscriberList from './AdminSubscriberList';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,9 +42,9 @@ export default async function AdminPage() {
   }
 
   const supabase = getServiceClient();
-  const { data: reports } = await supabase
+  const { data: reports, count: totalReports } = await supabase
     .from('reports')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .limit(200);
 
@@ -53,13 +54,25 @@ export default async function AdminPage() {
     .order('created_at', { ascending: false })
     .limit(200);
 
+  const { data: subscribers } = await supabase
+    .from('subscribers')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(500);
+
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-3xl font-extrabold">Admin</h1>
 
         <section className="mt-10">
-          <h2 className="text-lg font-bold">Reports</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold">Reports</h2>
+            <p className="text-sm text-muted">
+              {totalReports ?? 0} total{' '}
+              {totalReports && totalReports > 200 ? '(showing most recent 200)' : ''}
+            </p>
+          </div>
           <p className="mt-2 text-sm text-muted">
             Approve a report to make it count as "flagged" in search results.
             Remove a report to take it down entirely. Full contents here are
@@ -68,6 +81,19 @@ export default async function AdminPage() {
           </p>
           <div className="mt-6">
             <AdminReportList initialReports={reports || []} />
+          </div>
+        </section>
+
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="text-lg font-bold">Subscribers</h2>
+          <p className="mt-2 text-sm text-muted">
+            Everyone who's ever subscribed. Free credits (search_credits)
+            reset to 20 automatically on the 1st of each month for active
+            subscribers. Purchased/manually-added credits never expire and
+            stack separately.
+          </p>
+          <div className="mt-6">
+            <AdminSubscriberList initialSubscribers={subscribers || []} />
           </div>
         </section>
 

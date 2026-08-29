@@ -8,10 +8,16 @@ async function getSubscriber(clerkUserId: string) {
   const supabase = getServiceClient();
   const { data } = await supabase
     .from('subscribers')
-    .select('status, search_credits')
+    .select('status, search_credits, purchased_credits')
     .eq('clerk_user_id', clerkUserId)
     .maybeSingle();
-  return { isActive: data?.status === 'active', credits: data?.search_credits ?? 0 };
+  // Total shown to the subscriber is the free monthly pool (resets to 20
+  // on the 1st, no rollover) plus purchased/admin-added credits (never
+  // expire). See supabase/schema.sql for the split.
+  return {
+    isActive: data?.status === 'active',
+    credits: (data?.search_credits ?? 0) + (data?.purchased_credits ?? 0),
+  };
 }
 
 export default async function DashboardPage() {

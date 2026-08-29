@@ -7,8 +7,9 @@ type Report = {
   phone_numbers: string[] | null;
   subject_emails: string[] | null;
   subject_first_name: string | null;
-  scam_type: string | null;
+  scam_type: string[] | null;
   description: string | null;
+  reporter_name: string | null;
   reporter_email: string | null;
   reporter_phone: string | null;
   evidence_urls: string[] | null;
@@ -129,11 +130,13 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
               </p>
               <p>
                 <span className="text-muted">Type: </span>
-                {r.scam_type || '—'}
+                {r.scam_type?.length ? r.scam_type.join(', ') : '—'}
               </p>
               <p>
                 <span className="text-muted">Reporter: </span>
-                {r.reporter_email || r.reporter_phone || '—'}
+                {[r.reporter_name, r.reporter_email || r.reporter_phone]
+                  .filter(Boolean)
+                  .join(', ') || '—'}
               </p>
             </div>
 
