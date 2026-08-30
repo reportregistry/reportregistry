@@ -8,7 +8,15 @@ type Result = {
   isScam: boolean;
   totalReports: number;
   categoryCounts: Record<string, number>;
+  snippets: { firstName: string | null; categories: string[]; summary: string; reportedAt: string }[];
 } | null;
+
+type HistoryItem = {
+  query_type: string;
+  query_value: string;
+  total_reports: number;
+  searched_at: string;
+};
 
 // Traffic-light thresholds for a single category's count: clean at 0,
 // a caution zone once there's a report but it's not a pattern yet, and a
@@ -19,11 +27,18 @@ function countColorClass(count: number): string {
   return 'text-red';
 }
 
-export default function SearchBox({ initialCredits }: { initialCredits: number }) {
+export default function SearchBox({
+  initialCredits,
+  initialHistory = [],
+}: {
+  initialCredits: number;
+  initialHistory?: HistoryItem[];
+}) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result>(null);
   const [error, setError] = useState('');
+  const [history, setHistory] = useState(initialHistory);
 
   const [credits, setCredits] = useState(initialCredits);
   const [deepDiveState, setDeepDiveState] = useState<'idle' | 'submitting' | 'done'>('idle');
@@ -38,15 +53,14 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
     };
   }
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function runSearch(raw: string) {
     setLoading(true);
     setError('');
     setResult(null);
     setDeepDiveState('idle');
     setDeepDiveError('');
     try {
-      const { isEmail, phone, email } = parseQuery(query);
+      const { isEmail, phone, email } = parseQuery(raw);
       const param = isEmail
         ? `email=${encodeURIComponent(email)}`
         : `phone=${encodeURIComponent(phone)}`;
@@ -56,12 +70,33 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
         setError(data.error || 'Something went wrong.');
       } else {
         setResult(data);
+        // Search succeeded, so the API already logged it server-side --
+        // mirror that here so "Recent searches" updates without a reload.
+        setHistory((prev) => [
+          {
+            query_type: isEmail ? 'email' : 'phone',
+            query_value: isEmail ? email : phone,
+            total_reports: data.totalReports,
+            searched_at: new Date().toISOString(),
+          },
+          ...prev,
+        ].slice(0, 25));
       }
     } catch {
       setError('Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    runSearch(query);
+  }
+
+  function searchAgain(value: string) {
+    setQuery(value);
+    runSearch(value);
   }
 
   async function handleDeepDive() {
@@ -183,6 +218,51 @@ export default function SearchBox({ initialCredits }: { initialCredits: number }
       {deepDiveState === 'done' && (
         <div className="mt-3 rounded-lg border border-orange bg-orange/10 p-4 text-center text-sm">
           Submitted. An admin will manually look into this one.
+        </div>
+      )}
+
+      {result && result.snippets.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {result.snippets.map((s, i) => (
+            <div key={i} className="rounded-lg border border-border bg-card p-3 text-left text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <span className="font-semibold">{s.firstName || 'Unknown name'}</span>
+                <span className="text-xs text-muted">
+                  {new Date(s.reportedAt).toLocaleDateString()}
+                </span>
+              </div>
+              {s.categories.length > 0 && (
+                <p className="mt-1 text-xs text-orange">{s.categories.join(', ')}</p>
+              )}
+              <p className="mt-1.5 text-muted">{s.summary}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-8 border-t border-border pt-6 text-left">
+          <h2 className="mb-3 text-center text-sm font-bold uppercase tracking-wide text-muted">
+            Recent searches
+          </h2>
+          <div className="space-y-1.5">
+            {history.map((h, i) => (
+              <button
+                key={i}
+                onClick={() => searchAgain(h.query_value)}
+                className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm transition hover:border-orange/40"
+              >
+                <span className="truncate text-white">{h.query_value}</span>
+                <span
+                  className={`ml-2 shrink-0 text-xs font-semibold ${
+                    h.total_reports > 0 ? 'text-red' : 'text-green-400'
+                  }`}
+                >
+                  {h.total_reports > 0 ? `${h.total_reports} report${h.total_reports === 1 ? '' : 's'}` : 'clean'}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

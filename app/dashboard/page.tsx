@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
 import SearchBox from './SearchBox';
 import SubscribeButton from './SubscribeButton';
+import EnhancedReportsList from './EnhancedReportsList';
 
 async function getSubscriber(clerkUserId: string) {
   const supabase = getServiceClient();
@@ -18,6 +19,29 @@ async function getSubscriber(clerkUserId: string) {
     isActive: data?.status === 'active',
     credits: (data?.search_credits ?? 0) + (data?.purchased_credits ?? 0),
   };
+}
+
+async function getSearchHistory(clerkUserId: string) {
+  const supabase = getServiceClient();
+  const { data } = await supabase
+    .from('search_history')
+    .select('query_type, query_value, total_reports, searched_at')
+    .eq('clerk_user_id', clerkUserId)
+    .order('searched_at', { ascending: false })
+    .limit(25);
+  return data || [];
+}
+
+async function getEnhancedReports(clerkUserId: string) {
+  const supabase = getServiceClient();
+  const { data } = await supabase
+    .from('deep_dive_requests')
+    .select('id, query_type, query_value, category_counts, summary, resolved_at')
+    .eq('clerk_user_id', clerkUserId)
+    .eq('status', 'completed')
+    .order('resolved_at', { ascending: false })
+    .limit(25);
+  return data || [];
 }
 
 export default async function DashboardPage() {
@@ -42,13 +66,17 @@ export default async function DashboardPage() {
     ? await getSubscriber(userId)
     : { isActive: false, credits: 0 };
 
+  const [searchHistory, enhancedReports] = userId && isActive
+    ? await Promise.all([getSearchHistory(userId), getEnhancedReports(userId)])
+    : [[], []];
+
   return (
     <main className="min-h-screen px-6 py-24 text-center">
       <h1 className="text-3xl font-extrabold">Search the Registry</h1>
 
       {isActive ? (
         <div className="mt-10">
-          <SearchBox initialCredits={credits} />
+          <SearchBox initialCredits={credits} initialHistory={searchHistory} />
           <p className="mt-6 text-sm text-muted">
             Have a whole list to report?{' '}
             <Link href="/dashboard/bulk-report" className="text-orange">
@@ -56,6 +84,10 @@ export default async function DashboardPage() {
             </Link>
             .
           </p>
+          <div className="mx-auto mt-14 max-w-md text-left">
+            <h2 className="mb-3 text-center text-lg font-bold">Enhanced Reports</h2>
+            <EnhancedReportsList reports={enhancedReports} />
+          </div>
         </div>
       ) : (
         <div className="mx-auto mt-10 max-w-md rounded-xl border border-border bg-card p-8">

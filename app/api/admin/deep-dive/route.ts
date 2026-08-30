@@ -15,7 +15,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authorized.' }, { status: 403 });
   }
 
-  let body: { id?: string; admin_notes?: string };
+  let body: {
+    id?: string;
+    admin_notes?: string;
+    category_counts?: Record<string, number>;
+    summary?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -26,12 +31,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'An id is required.' }, { status: 400 });
   }
 
+  const trimmedSummary = body.summary?.trim();
+  if (trimmedSummary && trimmedSummary.length > 500) {
+    return NextResponse.json({ error: 'Summary must be 500 characters or fewer.' }, { status: 400 });
+  }
+
   const supabase = getServiceClient();
   const { error } = await supabase
     .from('deep_dive_requests')
     .update({
       status: 'completed',
       admin_notes: body.admin_notes || null,
+      category_counts: body.category_counts || {},
+      summary: trimmedSummary || null,
       resolved_at: new Date().toISOString(),
     })
     .eq('id', body.id);

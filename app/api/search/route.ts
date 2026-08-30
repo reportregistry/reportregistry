@@ -76,9 +76,53 @@ export async function GET(req: NextRequest) {
     categoryCounts[row.category] = Number(row.report_count);
   }
 
+  // Public snippets: up to 5 most recent approved reports on this
+  // phone/email that an admin has explicitly written a short summary
+  // for (admin_summary is opt-in per report -- most reports will have
+  // none, and this stays empty for them). subject_first_name and
+  // scam_type are included the same way they always were; description
+  // and reporter info are never selected here.
+  let snippetQuery = supabase
+    .from('reports')
+    .select('subject_first_name, scam_type, admin_summary, created_at')
+    .eq('status', 'approved')
+    .not('admin_summary', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  if (phone && email) {
+    snippetQuery = snippetQuery.or(`phone_numbers.cs.{${phone}},subject_emails.cs.{${email}}`);
+  } else if (phone) {
+    snippetQuery = snippetQuery.contains('phone_numbers', [phone]);
+  } else if (email) {
+    snippetQuery = snippetQuery.contains('subject_emails', [email]);
+  }
+
+  const { data: snippetRows, error: snippetError } = await snippetQuery;
+  if (snippetError) {
+    return NextResponse.json({ error: snippetError.message }, { status: 500 });
+  }
+
+  const snippets = (snippetRows || []).map((r) => ({
+    firstName: r.subject_first_name,
+    categories: r.scam_type || [],
+    summary: r.admin_summary,
+    reportedAt: r.created_at,
+  }));
+
+  // Log this search for the "Recent searches" list on the dashboard.
+  // Best-effort -- a failure here shouldn't break the actual search
+  // result the subscriber is waiting on.
+  await supabase.from('search_history').insert({
+    clerk_user_id: userId,
+    query_type: phone ? 'phone' : 'email',
+    query_value: phone || email,
+    total_reports: totalReports ?? 0,
+  });
+
   return NextResponse.json({
     isScam: (totalReports ?? 0) > 0,
     totalReports: totalReports ?? 0,
     categoryCounts,
+    snippets,
   });
 }

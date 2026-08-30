@@ -9,6 +9,7 @@ type Report = {
   subject_first_name: string | null;
   scam_type: string[] | null;
   description: string | null;
+  admin_summary: string | null;
   reporter_name: string | null;
   reporter_email: string | null;
   reporter_phone: string | null;
@@ -29,6 +30,8 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   const [reports, setReports] = useState(initialReports);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('pending');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [summaryDrafts, setSummaryDrafts] = useState<Record<string, string>>({});
+  const [summaryError, setSummaryError] = useState<Record<string, string>>({});
 
   async function updateStatus(id: string, status: string) {
     setBusyId(id);
@@ -41,6 +44,33 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
       if (res.ok) {
         setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
       }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function saveSummary(report: Report) {
+    const draft = summaryDrafts[report.id] ?? report.admin_summary ?? '';
+    if (draft.length > 500) {
+      setSummaryError((prev) => ({ ...prev, [report.id]: 'Must be 500 characters or fewer.' }));
+      return;
+    }
+    setSummaryError((prev) => ({ ...prev, [report.id]: '' }));
+    setBusyId(report.id);
+    try {
+      const res = await fetch('/api/admin/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: report.id, status: report.status, admin_summary: draft }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSummaryError((prev) => ({ ...prev, [report.id]: data.error || 'Failed to save.' }));
+        return;
+      }
+      setReports((prev) =>
+        prev.map((r) => (r.id === report.id ? { ...r, admin_summary: draft.trim() || null } : r))
+      );
     } finally {
       setBusyId(null);
     }
@@ -145,6 +175,37 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 {r.description}
               </p>
             )}
+
+            <div className="mt-3 rounded-lg border border-orange/30 bg-orange/5 p-3">
+              <label className="mb-1.5 block text-xs font-semibold text-orange">
+                Public summary (shown to subscribers on search -- optional, admin-written only)
+              </label>
+              <textarea
+                value={summaryDrafts[r.id] ?? r.admin_summary ?? ''}
+                onChange={(e) =>
+                  setSummaryDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))
+                }
+                maxLength={500}
+                rows={3}
+                placeholder="Leave blank to keep this report's details admin-only."
+                className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+              />
+              <div className="mt-1.5 flex items-center justify-between">
+                <span className="text-xs text-muted">
+                  {(summaryDrafts[r.id] ?? r.admin_summary ?? '').length}/500
+                </span>
+                <button
+                  disabled={busyId === r.id}
+                  onClick={() => saveSummary(r)}
+                  className="rounded-lg bg-orange px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-50"
+                >
+                  Save summary
+                </button>
+              </div>
+              {summaryError[r.id] && (
+                <p className="mt-1 text-xs text-red">{summaryError[r.id]}</p>
+              )}
+            </div>
 
             {r.evidence_urls && r.evidence_urls.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">

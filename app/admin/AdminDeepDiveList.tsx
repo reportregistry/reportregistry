@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { SCAM_TYPES } from '@/lib/scamTypes';
 
 type DeepDive = {
   id: string;
@@ -9,26 +10,62 @@ type DeepDive = {
   query_value: string;
   status: string;
   admin_notes: string | null;
+  category_counts: Record<string, number> | null;
+  summary: string | null;
   created_at: string;
 };
 
+type Draft = {
+  notes: string;
+  summary: string;
+  counts: Record<string, string>;
+};
+
+function emptyDraft(): Draft {
+  return { notes: '', summary: '', counts: {} };
+}
+
 export default function AdminDeepDiveList({ initialRequests }: { initialRequests: DeepDive[] }) {
   const [requests, setRequests] = useState(initialRequests);
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
 
+  function draftFor(id: string): Draft {
+    return drafts[id] || emptyDraft();
+  }
+
+  function updateDraft(id: string, patch: Partial<Draft>) {
+    setDrafts((prev) => ({ ...prev, [id]: { ...draftFor(id), ...patch } }));
+  }
+
   async function complete(id: string) {
+    const draft = draftFor(id);
+    const category_counts: Record<string, number> = {};
+    for (const t of SCAM_TYPES) {
+      const n = Number(draft.counts[t]);
+      if (Number.isFinite(n) && n > 0) category_counts[t] = Math.round(n);
+    }
+
     setBusyId(id);
     try {
       const res = await fetch('/api/admin/deep-dive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, admin_notes: notes[id] || '' }),
+        body: JSON.stringify({
+          id,
+          admin_notes: draft.notes || '',
+          summary: draft.summary || '',
+          category_counts,
+        }),
       });
       if (res.ok) {
         setRequests((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: 'completed', admin_notes: notes[id] || null } : r))
+          prev.map((r) =>
+            r.id === id
+              ? { ...r, status: 'completed', admin_notes: draft.notes || null, summary: draft.summary || null, category_counts }
+              : r
+          )
         );
       }
     } finally {
@@ -54,51 +91,114 @@ export default function AdminDeepDiveList({ initialRequests }: { initialRequests
       {visible.length === 0 && <p className="text-sm text-muted">Nothing here right now.</p>}
 
       <div className="space-y-3">
-        {visible.map((r) => (
-          <div key={r.id} className="rounded-xl border border-border bg-card p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm">
-                <span className="font-semibold capitalize">{r.query_type}:</span>{' '}
-                {r.query_value}
-                <span className="ml-3 text-xs text-muted">
-                  {new Date(r.created_at).toLocaleString()}
+        {visible.map((r) => {
+          const draft = draftFor(r.id);
+          return (
+            <div key={r.id} className="rounded-xl border border-border bg-card p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm">
+                  <span className="font-semibold capitalize">{r.query_type}:</span>{' '}
+                  {r.query_value}
+                  <span className="ml-3 text-xs text-muted">
+                    {new Date(r.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <span
+                  className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
+                    r.status === 'pending'
+                      ? 'border-orange/40 bg-orange/10 text-orange'
+                      : 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
+                  }`}
+                >
+                  {r.status}
                 </span>
               </div>
-              <span
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
-                  r.status === 'pending'
-                    ? 'border-orange/40 bg-orange/10 text-orange'
-                    : 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
-                }`}
-              >
-                {r.status}
-              </span>
-            </div>
 
-            {r.status === 'pending' ? (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="text"
-                  placeholder="Notes on what you found (optional)"
-                  value={notes[r.id] || ''}
-                  onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                  className="flex-1 rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
-                />
-                <button
-                  disabled={busyId === r.id}
-                  onClick={() => complete(r.id)}
-                  className="rounded-lg bg-[#5aa9e6] px-3 py-2 text-xs font-semibold text-navy disabled:opacity-50"
-                >
-                  Mark completed
-                </button>
-              </div>
-            ) : (
-              r.admin_notes && (
-                <p className="mt-2 rounded-lg bg-navy p-2 text-xs text-muted">{r.admin_notes}</p>
-              )
-            )}
-          </div>
-        ))}
+              {r.status === 'pending' ? (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs text-muted">
+                      Category counts (what your research found -- leave any at 0 that don't apply)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {SCAM_TYPES.map((t) => (
+                        <div key={t} className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            value={draft.counts[t] || ''}
+                            onChange={(e) =>
+                              updateDraft(r.id, { counts: { ...draft.counts, [t]: e.target.value } })
+                            }
+                            className="w-14 rounded-lg border border-border bg-navy px-2 py-1.5 text-xs outline-none focus:border-[#5aa9e6]"
+                          />
+                          <span className="text-xs text-muted">{t}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs text-muted">
+                      Summary shown to the subscriber (max 500 chars, optional)
+                    </label>
+                    <textarea
+                      value={draft.summary}
+                      onChange={(e) => updateDraft(r.id, { summary: e.target.value })}
+                      maxLength={500}
+                      rows={2}
+                      className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-[#5aa9e6]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs text-muted">
+                      Internal notes (staff only, never shown to the subscriber)
+                    </label>
+                    <input
+                      type="text"
+                      value={draft.notes}
+                      onChange={(e) => updateDraft(r.id, { notes: e.target.value })}
+                      className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+                    />
+                  </div>
+
+                  <button
+                    disabled={busyId === r.id}
+                    onClick={() => complete(r.id)}
+                    className="rounded-lg bg-[#5aa9e6] px-3 py-2 text-xs font-semibold text-navy disabled:opacity-50"
+                  >
+                    Mark completed
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {r.category_counts && Object.keys(r.category_counts).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(r.category_counts).map(([cat, count]) => (
+                        <span
+                          key={cat}
+                          className="rounded-full border border-[#5aa9e6]/40 bg-[#5aa9e6]/10 px-2.5 py-0.5 text-xs text-[#5aa9e6]"
+                        >
+                          {cat}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {r.summary && (
+                    <p className="rounded-lg bg-navy p-2 text-xs text-white">{r.summary}</p>
+                  )}
+                  {r.admin_notes && (
+                    <p className="rounded-lg bg-navy p-2 text-xs text-muted">
+                      Internal note: {r.admin_notes}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

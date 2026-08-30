@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 // Shared across every page via app/layout.tsx, so there's always a way
 // back home and consistent branding/nav -- previously this only existed
@@ -41,6 +41,7 @@ export default function SiteHeader() {
             >
               Go to Search
             </Link>
+            <UserButton afterSignOutUrl="/" />
           </SignedIn>
         </nav>
       </div>

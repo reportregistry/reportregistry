@@ -74,9 +74,13 @@ export default function TermsPage() {
               results show whether a phone number or email has any approved
               reports on file and, if so, a count of how many reports fall
               into each category (for example, "Flake-No Show" or
-              "Threats/Dangerous"). We do not publish the underlying report
-              text, evidence, or the reporting party's identity to
-              subscribers or the public under any circumstance.
+              "Threats/Dangerous"). We never publish a reporter's identity,
+              and the reporter's own written description is never shown
+              publicly. For some approved reports, our staff may separately
+              write a short (500 character or fewer) summary and choose to
+              display it alongside the subject's first name; this is
+              admin-authored and admin-approved, not the reporter's raw
+              submission, and only happens when we've chosen to publish it.
             </p>
           </section>
 

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authorized.' }, { status: 403 });
   }
 
-  let body: { id?: string; status?: string };
+  let body: { id?: string; status?: string; admin_summary?: string | null };
   try {
     body = await req.json();
   } catch {
@@ -27,10 +27,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A valid id and status are required.' }, { status: 400 });
   }
 
+  // admin_summary is optional and separate from status changes -- when
+  // present, it's the short public-facing blurb shown to subscribers on
+  // search (see supabase/schema.sql). Blank/whitespace clears it back to
+  // null (unpublishing it) rather than storing an empty string.
+  const trimmedSummary = body.admin_summary?.trim();
+  if (trimmedSummary && trimmedSummary.length > 500) {
+    return NextResponse.json({ error: 'Summary must be 500 characters or fewer.' }, { status: 400 });
+  }
+
+  const updates: Record<string, unknown> = { status: body.status };
+  if (body.admin_summary !== undefined) {
+    updates.admin_summary = trimmedSummary || null;
+  }
+
   const supabase = getServiceClient();
   const { error } = await supabase
     .from('reports')
-    .update({ status: body.status })
+    .update(updates)
     .eq('id', body.id);
 
   if (error) {

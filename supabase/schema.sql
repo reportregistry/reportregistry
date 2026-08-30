@@ -15,9 +15,13 @@
 --
 -- `description` is written by the reporter (what happened, plus the
 -- free-text explanation when scam_type includes 'Other') and is NEVER
--- exposed by the search API -- subscribers and the public only ever see
--- per-category report counts, not the underlying text. It's for
--- admin/moderation eyes only.
+-- exposed by the search API -- it's for admin/moderation eyes only,
+-- always. `admin_summary` is a DIFFERENT field: an optional, short
+-- (<=500 char) blurb an admin writes themselves after reviewing a
+-- report, which IS shown to subscribers on search (alongside
+-- subject_first_name and scam_type) once the report is approved AND an
+-- admin has filled this in -- it's opt-in per report, admin-authored,
+-- and never just the reporter's raw text copied over.
 --
 -- scam_type is an array (not a single value) because a reporter can pick
 -- more than one category on a single report -- e.g. someone who
@@ -32,6 +36,7 @@ create table if not exists reports (
   subject_first_name text,
   scam_type text[] default '{}', -- any of: Scammer/Spam Caller | Fake Email/Link | Flake-No Show | Threats/Dangerous | Fake Payment | Other
   description text not null,
+  admin_summary text check (char_length(admin_summary) <= 500),
   reporter_name text,
   reporter_email text,
   reporter_phone text,
@@ -86,6 +91,14 @@ create index if not exists idx_subscribers_clerk on subscribers (clerk_user_id);
 -- an admin to manually dig into a phone number or email that came back
 -- with no report on file. Reviewed and resolved by hand in /admin --
 -- this is a request queue, not an automated process.
+--
+-- admin_notes is internal-only (staff eyes, never shown to the
+-- subscriber). category_counts and summary are the subscriber-facing
+-- "Enhanced Report" result: category_counts is a jsonb map like
+-- {"Threats/Dangerous": 2} that the admin fills in by hand based on
+-- their research, and summary is a short (<=500 char) write-up the
+-- subscriber sees on their Enhanced Reports page once status flips to
+-- 'completed'.
 create table if not exists deep_dive_requests (
   id uuid primary key default gen_random_uuid(),
   clerk_user_id text not null,
@@ -93,12 +106,29 @@ create table if not exists deep_dive_requests (
   query_value text not null,
   status text not null default 'pending', -- pending | completed
   admin_notes text,
+  category_counts jsonb not null default '{}'::jsonb,
+  summary text check (char_length(summary) <= 500),
   created_at timestamptz not null default now(),
   resolved_at timestamptz
 );
 
 create index if not exists idx_deep_dive_status on deep_dive_requests (status);
 create index if not exists idx_deep_dive_clerk on deep_dive_requests (clerk_user_id);
+
+-- Search history: last N searches per subscriber, shown on their
+-- dashboard with a "search again" shortcut. Purely a convenience
+-- feature -- doesn't gate anything and isn't visible to anyone but the
+-- subscriber who ran the search.
+create table if not exists search_history (
+  id uuid primary key default gen_random_uuid(),
+  clerk_user_id text not null,
+  query_type text not null, -- phone | email
+  query_value text not null,
+  total_reports integer not null default 0,
+  searched_at timestamptz not null default now()
+);
+
+create index if not exists idx_search_history_clerk on search_history (clerk_user_id, searched_at desc);
 
 -- Search's core aggregation: for a given phone and/or email, count how
 -- many approved reports include each category. A report with two
@@ -139,6 +169,7 @@ $$;
 alter table reports enable row level security;
 alter table subscribers enable row level security;
 alter table deep_dive_requests enable row level security;
+alter table search_history enable row level security;
 
 -- Atomic credit helpers, called via supabase.rpc(...) instead of a plain
 -- update, so two near-simultaneous requests can't both succeed off the

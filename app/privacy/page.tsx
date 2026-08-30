@@ -29,9 +29,14 @@ export default function PrivacyPage() {
               Paying subscribers who search a number or email see whether it
               has any approved reports on file and, if so, a count broken
               down by category (for example, how many "Threats/Dangerous"
-              vs. "Flake-No Show" reports). They never see the report text,
-              evidence, or reporter's identity. Full report details are
-              visible only to site administrators for moderation purposes.
+              vs. "Flake-No Show" reports). They never see the reporter's
+              identity or the reporter's own written description. For some
+              approved reports, our staff may choose to publish a short,
+              staff-written summary (500 characters or fewer) alongside the
+              subject's first name; this only happens when an admin has
+              specifically written and approved it. Full report details,
+              including the reporter's identity and description, remain
+              visible only to site administrators.
             </p>
           </section>
 
