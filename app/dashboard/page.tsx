@@ -4,6 +4,8 @@ import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
 import SearchBox from './SearchBox';
 import SubscribeButton from './SubscribeButton';
 import EnhancedReportsList from './EnhancedReportsList';
+import ManageSubscriptionButton from './ManageSubscriptionButton';
+import WatchList from './WatchList';
 
 async function getSubscriber(clerkUserId: string) {
   const supabase = getServiceClient();
@@ -46,6 +48,17 @@ async function getSearchHistory(clerkUserId: string) {
   return deduped;
 }
 
+async function getWatches(clerkUserId: string) {
+  const supabase = getServiceClient();
+  const { data } = await supabase
+    .from('watches')
+    .select('id, query_type, query_value, created_at')
+    .eq('clerk_user_id', clerkUserId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  return data || [];
+}
+
 async function getEnhancedReports(clerkUserId: string) {
   const supabase = getServiceClient();
   const { data } = await supabase
@@ -80,9 +93,9 @@ export default async function DashboardPage() {
     ? await getSubscriber(userId)
     : { isActive: false, credits: 0 };
 
-  const [searchHistory, enhancedReports] = userId && isActive
-    ? await Promise.all([getSearchHistory(userId), getEnhancedReports(userId)])
-    : [[], []];
+  const [searchHistory, enhancedReports, watches] = userId && isActive
+    ? await Promise.all([getSearchHistory(userId), getEnhancedReports(userId), getWatches(userId)])
+    : [[], [], []];
 
   return (
     <main className="min-h-screen px-6 py-24 text-center">
@@ -99,8 +112,15 @@ export default async function DashboardPage() {
             .
           </p>
           <div className="mx-auto mt-14 max-w-md text-left">
+            <h2 className="mb-3 text-center text-lg font-bold">Watching</h2>
+            <WatchList initialWatches={watches} />
+          </div>
+          <div className="mx-auto mt-14 max-w-md text-left">
             <h2 className="mb-3 text-center text-lg font-bold">Enhanced Reports</h2>
             <EnhancedReportsList reports={enhancedReports} />
+          </div>
+          <div className="mt-8">
+            <ManageSubscriptionButton />
           </div>
         </div>
       ) : (
@@ -110,6 +130,11 @@ export default async function DashboardPage() {
             for scam reports. Filing a report yourself is always free.
           </p>
           <SubscribeButton />
+          {userId && (
+            <div className="mt-4">
+              <ManageSubscriptionButton />
+            </div>
+          )}
         </div>
       )}
     </main>

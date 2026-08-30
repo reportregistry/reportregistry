@@ -36,6 +36,12 @@ export default function SiteHeader() {
           </SignedOut>
           <SignedIn>
             <Link
+              href="/dashboard/my-reports"
+              className="hidden whitespace-nowrap px-2 py-1.5 text-muted transition hover:text-white sm:inline"
+            >
+              My Reports
+            </Link>
+            <Link
               href="/dashboard"
               className="whitespace-nowrap rounded-lg bg-gradient-to-br from-red to-orange px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
             >

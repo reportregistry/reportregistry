@@ -4,8 +4,77 @@ import { getServiceClient } from '@/lib/supabase';
 import { isAdminEmail } from '@/lib/admin';
 import { normalizePhone } from '@/lib/phone';
 import { SCAM_TYPES } from '@/lib/scamTypes';
+import { sendEmail } from '@/lib/email';
 
 const VALID_STATUSES = ['pending', 'approved', 'removed'];
+
+// Emails anyone watching a phone/email that appears on this report (see
+// app/api/watch/route.ts and WatchList.tsx). Only called on the
+// transition INTO 'approved' -- see the call site below -- so a watcher
+// gets exactly one email per new report, not one per subsequent admin
+// edit. Best-effort throughout: a missing subscriber email, a missing
+// RESEND_API_KEY (sendEmail no-ops in that case), or any other hiccup
+// here should never fail the approval itself.
+async function notifyWatchers(
+  supabase: ReturnType<typeof getServiceClient>,
+  report: { phone_numbers: string[] | null; subject_emails: string[] | null }
+) {
+  const phones = report.phone_numbers || [];
+  const emails = report.subject_emails || [];
+  if (phones.length === 0 && emails.length === 0) return;
+
+  const matches: { id: string; clerk_user_id: string; query_value: string }[] = [];
+  if (phones.length > 0) {
+    const { data } = await supabase
+      .from('watches')
+      .select('id, clerk_user_id, query_value')
+      .eq('query_type', 'phone')
+      .in('query_value', phones);
+    if (data) matches.push(...data);
+  }
+  if (emails.length > 0) {
+    const { data } = await supabase
+      .from('watches')
+      .select('id, clerk_user_id, query_value')
+      .eq('query_type', 'email')
+      .in('query_value', emails);
+    if (data) matches.push(...data);
+  }
+  if (matches.length === 0) return;
+
+  // One email per watcher, even if they somehow matched on more than one
+  // identifier on the same report.
+  const seenUsers = new Set<string>();
+  const notifications = matches.filter((m) => {
+    if (seenUsers.has(m.clerk_user_id)) return false;
+    seenUsers.add(m.clerk_user_id);
+    return true;
+  });
+
+  const { data: subs } = await supabase
+    .from('subscribers')
+    .select('clerk_user_id, email')
+    .in('clerk_user_id', Array.from(seenUsers));
+  const emailByUser = new Map((subs || []).map((s) => [s.clerk_user_id, s.email]));
+
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://reportregistry.com';
+  await Promise.all(
+    notifications.map((n) => {
+      const to = emailByUser.get(n.clerk_user_id);
+      if (!to) return Promise.resolve();
+      return sendEmail(
+        to,
+        'New report on a number you\'re watching',
+        `A new report was just approved on ${n.query_value}, which you're watching on ReportRegistry. Log in to see the details: ${baseUrl}/dashboard`
+      );
+    })
+  );
+
+  await supabase
+    .from('watches')
+    .update({ last_notified_at: new Date().toISOString() })
+    .in('id', notifications.map((n) => n.id));
+}
 
 type Body = {
   id?: string;
@@ -118,6 +187,17 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getServiceClient();
+
+  // Needed to detect the transition INTO 'approved' below -- notifying
+  // watchers on every edit to an already-approved report would spam
+  // them for typo fixes, so this only fires the first time.
+  const { data: existing } = await supabase
+    .from('reports')
+    .select('status')
+    .eq('id', body.id)
+    .maybeSingle();
+  const wasApproved = existing?.status === 'approved';
+
   const { data, error } = await supabase
     .from('reports')
     .update(updates)
@@ -127,6 +207,10 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!wasApproved && data.status === 'approved') {
+    await notifyWatchers(supabase, data);
   }
 
   // Returns the full updated row so the admin UI can sync its local state

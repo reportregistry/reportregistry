@@ -1,11 +1,18 @@
+import { Suspense } from 'react';
+import Link from 'next/link';
 import ReportForm from './ReportForm';
 
-// A free account is required to file a report (enforced by middleware.ts,
-// which redirects signed-out visitors to /sign-in before this ever
-// renders). Reporting itself stays free -- this just means no anonymous
-// submissions. Because they're always signed in here, the reporter's
-// contact info comes from their Clerk account server-side (see
-// app/api/report/route.ts) rather than a manual form field.
+// Filing a report is free and doesn't require an account -- middleware.ts
+// deliberately leaves /report and /api/report unprotected. Signed-in
+// users get their reporter contact info from their Clerk session
+// server-side; anonymous filers type it in manually on the form (see
+// ReportForm.tsx's "Your info" section and app/api/report/route.ts).
+//
+// ReportForm is wrapped in Suspense because it reads the phone/email
+// query params (via useSearchParams) to pre-fill the form when someone
+// arrives here from a "report this number" link on a clean search
+// result -- Next.js requires that wrapper for any client component using
+// useSearchParams.
 export default function ReportPage() {
   return (
     <main className="min-h-screen px-4 py-14 sm:px-6 sm:py-24">
@@ -22,9 +29,18 @@ export default function ReportPage() {
           general dispute or complaint board, and reports outside this
           scope will be removed.
         </div>
+        <p className="mt-4 text-xs text-muted">
+          Already filed a report?{' '}
+          <Link href="/report/status" className="text-orange underline">
+            Check its status
+          </Link>
+          .
+        </p>
       </div>
       <div className="mt-10">
-        <ReportForm />
+        <Suspense fallback={null}>
+          <ReportForm />
+        </Suspense>
       </div>
     </main>
   );

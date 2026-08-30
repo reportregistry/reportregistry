@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
       description,
       reporter_email: reporterEmail,
       reporter_phone: reporterPhone,
+      reporter_clerk_user_id: userId,
       evidence_urls: [],
       status: 'pending',
     });

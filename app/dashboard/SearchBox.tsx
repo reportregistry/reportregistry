@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import BuyCreditsButton from './BuyCreditsButton';
 import { SCAM_TYPES } from '@/lib/scamTypes';
 
@@ -28,6 +29,11 @@ function countColorClass(count: number): string {
   return 'text-red';
 }
 
+// Recent searches is capped at 25 stored rows (see dashboard/page.tsx),
+// but stacking up to 25 cards on a narrow dashboard column gets messy
+// fast -- paginate the display instead of dumping them all at once.
+const HISTORY_PAGE_SIZE = 10;
+
 export default function SearchBox({
   initialCredits,
   initialHistory = [],
@@ -40,6 +46,10 @@ export default function SearchBox({
   const [result, setResult] = useState<Result>(null);
   const [error, setError] = useState('');
   const [history, setHistory] = useState(initialHistory);
+  const [historyPage, setHistoryPage] = useState(0);
+
+  const [watching, setWatching] = useState<boolean | null>(null);
+  const [watchBusy, setWatchBusy] = useState(false);
 
   const [credits, setCredits] = useState(initialCredits);
   const [deepDiveState, setDeepDiveState] = useState<'idle' | 'submitting' | 'done'>('idle');
@@ -58,6 +68,7 @@ export default function SearchBox({
     setLoading(true);
     setError('');
     setResult(null);
+    setWatching(null);
     setDeepDiveState('idle');
     setDeepDiveError('');
     try {
@@ -71,6 +82,13 @@ export default function SearchBox({
         setError(data.error || 'Something went wrong.');
       } else {
         setResult(data);
+        // Best-effort, separate from the main search result -- if this
+        // fails for any reason, the watch toggle just stays hidden
+        // (watching === null) rather than breaking the search itself.
+        fetch(`/api/watch?${param}`)
+          .then((r) => r.json())
+          .then((w) => setWatching(Boolean(w.watching)))
+          .catch(() => setWatching(null));
         // Search succeeded, so the API already logged it server-side --
         // mirror that here so "Recent searches" updates without a reload.
         // De-dupe by value first: re-searching something already in the
@@ -87,6 +105,10 @@ export default function SearchBox({
           },
           ...prev.filter((h) => h.query_value.toLowerCase() !== value.toLowerCase()),
         ].slice(0, 25));
+        // The new/moved-up entry always lands at the top of the list, so
+        // jump back to page 1 to show it rather than leaving the user
+        // stranded on whatever page they were previously viewing.
+        setHistoryPage(0);
       }
     } catch {
       setError('Something went wrong. Try again.');
@@ -103,6 +125,22 @@ export default function SearchBox({
   function searchAgain(value: string) {
     setQuery(value);
     runSearch(value);
+  }
+
+  async function toggleWatch() {
+    if (watching === null) return;
+    const { isEmail, phone, email } = parseQuery(query);
+    setWatchBusy(true);
+    try {
+      const res = await fetch('/api/watch', {
+        method: watching ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isEmail ? { email } : { phone }),
+      });
+      if (res.ok) setWatching((w) => !w);
+    } finally {
+      setWatchBusy(false);
+    }
   }
 
   async function handleDeepDive() {
@@ -128,6 +166,12 @@ export default function SearchBox({
       setDeepDiveState('idle');
     }
   }
+
+  const totalHistoryPages = Math.max(1, Math.ceil(history.length / HISTORY_PAGE_SIZE));
+  const visibleHistory = history.slice(
+    historyPage * HISTORY_PAGE_SIZE,
+    historyPage * HISTORY_PAGE_SIZE + HISTORY_PAGE_SIZE
+  );
 
   return (
     <div className="mx-auto max-w-md">
@@ -158,17 +202,24 @@ export default function SearchBox({
 
       {history.length > 0 && (
         <div className="mt-4 text-left">
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
-            Recent searches
-          </h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-muted">
+              Recent searches ({history.length})
+            </h2>
+            {totalHistoryPages > 1 && (
+              <span className="text-xs text-muted">
+                Page {historyPage + 1} of {totalHistoryPages}
+              </span>
+            )}
+          </div>
           <div className="space-y-2">
-            {history.map((h, i) => {
+            {visibleHistory.map((h, i) => {
               const marks = SCAM_TYPES.map((c) => [c, h.category_counts?.[c] ?? 0] as const).filter(
                 ([, count]) => count > 0
               );
               return (
                 <button
-                  key={i}
+                  key={`${h.query_value}-${h.searched_at}`}
                   onClick={() => searchAgain(h.query_value)}
                   className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-sm transition hover:border-orange/40"
                 >
@@ -193,6 +244,25 @@ export default function SearchBox({
               );
             })}
           </div>
+
+          {totalHistoryPages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setHistoryPage((p) => Math.max(0, p - 1))}
+                disabled={historyPage === 0}
+                className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted transition hover:text-white disabled:opacity-30"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages - 1, p + 1))}
+                disabled={historyPage >= totalHistoryPages - 1}
+                className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted transition hover:text-white disabled:opacity-30"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -214,6 +284,20 @@ export default function SearchBox({
             ? `⚠️ ${result.totalReports} report${result.totalReports === 1 ? '' : 's'} on file for this contact.`
             : '✅ No scam reports found for this contact.'}
         </div>
+      )}
+
+      {result && watching !== null && (
+        <button
+          onClick={toggleWatch}
+          disabled={watchBusy}
+          className={`mt-2 w-full text-center text-xs transition disabled:opacity-50 ${
+            watching ? 'text-orange' : 'text-muted hover:text-white'
+          }`}
+        >
+          {watching
+            ? '★ Watching -- you\'ll get an email if a new report lands on this'
+            : '☆ Watch this number/email for future reports'}
+        </button>
       )}
 
       {result && (
@@ -258,6 +342,23 @@ export default function SearchBox({
               : 'Request a deeper dive (1 credit)'}
           </button>
           {deepDiveError && <p className="mt-2 text-xs text-red">{deepDiveError}</p>}
+
+          {/* If it's the person who searched who actually got scammed by
+              this clean-so-far number, get them straight into the report
+              form with it already filled in -- one click instead of
+              retyping what they just searched. */}
+          <p className="mt-3 text-xs text-muted">
+            Got scammed by this one?{' '}
+            <Link
+              href={`/report?${parseQuery(query).isEmail ? 'email' : 'phone'}=${encodeURIComponent(
+                query.trim()
+              )}`}
+              className="text-orange underline"
+            >
+              File a report on it
+            </Link>
+            .
+          </p>
         </div>
       )}
 
@@ -272,7 +373,7 @@ export default function SearchBox({
           {result.snippets.map((s, i) => (
             <div key={i} className="rounded-lg border border-border bg-card p-3 text-left text-sm">
               <div className="flex flex-wrap items-center justify-between gap-1">
-                <span className="font-semibold">{s.firstName || 'Unknown name'}</span>
+                <span className="font-semibold">{s.firstName}</span>
                 <span className="text-xs text-muted">
                   {new Date(s.reportedAt).toLocaleDateString()}
                 </span>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Script from 'next/script';
+import { useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { SCAM_TYPES } from '@/lib/scamTypes';
 
@@ -79,8 +80,16 @@ function SelectChevron() {
 // via the buttons below, to keep the common case (one number) fast.
 export default function ReportForm() {
   const { isSignedIn, isLoaded } = useUser();
+  const searchParams = useSearchParams();
+  // Pre-fills from a "Report this number" link on a clean search result
+  // (see SearchBox.tsx) -- someone who just searched a number and found
+  // nothing on file, but knows it's a scammer, lands here with the value
+  // already in place instead of retyping it.
+  const prefillPhone = searchParams.get('phone') || '';
+  const prefillEmail = searchParams.get('email') || '';
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [trackingCode, setTrackingCode] = useState('');
   const [error, setError] = useState('');
   // Multiple categories can apply to one report (e.g. a no-show who also
   // made threats), so this is an array, not a single value.
@@ -91,7 +100,7 @@ export default function ReportForm() {
   }
 
   const [showPhone2, setShowPhone2] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
+  const [showEmail, setShowEmail] = useState(Boolean(prefillEmail));
   const [showEmail2, setShowEmail2] = useState(false);
 
   const [phoneCode, setPhoneCode] = useState('+1');
@@ -148,6 +157,7 @@ export default function ReportForm() {
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Try again.');
       } else {
+        setTrackingCode(data.trackingCode || '');
         setDone(true);
       }
     } catch {
@@ -165,6 +175,29 @@ export default function ReportForm() {
           It'll be reviewed before it appears in search results. No charge,
           ever, for filing a report.
         </p>
+        {isSignedIn ? (
+          <p className="mt-4 text-sm">
+            <a href="/dashboard/my-reports" className="text-orange underline">
+              View the status of your filed reports
+            </a>
+          </p>
+        ) : (
+          trackingCode && (
+            <div className="mt-4 rounded-lg border border-border bg-navy p-4 text-sm">
+              <p className="text-muted">
+                Save this tracking code to check your report's status later:
+              </p>
+              <p className="mt-1 text-lg font-bold tracking-wide text-white">{trackingCode}</p>
+              <p className="mt-2 text-xs text-muted">
+                Look it up anytime at{' '}
+                <a href="/report/status" className="text-orange underline">
+                  /report/status
+                </a>
+                . No account needed.
+              </p>
+            </div>
+          )
+        )}
       </div>
     );
   }
@@ -273,6 +306,7 @@ export default function ReportForm() {
               <input
                 name="phone_number"
                 type="tel"
+                defaultValue={prefillPhone}
                 placeholder="e.g. 7911 123456"
                 className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#5aa9e6]"
               />
@@ -315,6 +349,7 @@ export default function ReportForm() {
               <input
                 name="subject_email"
                 type="email"
+                defaultValue={prefillEmail}
                 className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#5aa9e6]"
               />
             </div>

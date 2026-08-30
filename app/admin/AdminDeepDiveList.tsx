@@ -25,6 +25,22 @@ function emptyDraft(): Draft {
   return { notes: '', summary: '', counts: {} };
 }
 
+// Quick-fill buttons for the subscriber-facing summary -- covers the most
+// common outcomes so staff aren't retyping the same few sentences on
+// every deep dive. Clicking one fills the textarea; it's still a normal
+// editable field afterward, so these are a starting point, not a lock-in.
+// The "Clean" preset pairs with the green styling on the subscriber's
+// Enhanced Reports page (see EnhancedReportsList.tsx), which colors the
+// summary green whenever category_counts ends up empty -- so as long as
+// you leave all the counts at 0 for a clean result, it'll render green
+// regardless of which preset (or custom text) you use here.
+const SUMMARY_PRESETS = [
+  { label: 'Clean', text: 'Clean! Nothing to report on this one.' },
+  { label: 'Confirmed scammer', text: 'Confirmed: this matches patterns from other reports on file.' },
+  { label: 'Inconclusive', text: "Inconclusive. We didn't find strong evidence either way." },
+  { label: 'Red flags found', text: 'Multiple red flags found. Proceed with caution.' },
+];
+
 export default function AdminDeepDiveList({ initialRequests }: { initialRequests: DeepDive[] }) {
   const [requests, setRequests] = useState(initialRequests);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -143,6 +159,18 @@ export default function AdminDeepDiveList({ initialRequests }: { initialRequests
                     <label className="mb-1.5 block text-xs text-muted">
                       Summary shown to the subscriber (max 500 chars, optional)
                     </label>
+                    <div className="mb-1.5 flex flex-wrap gap-1.5">
+                      {SUMMARY_PRESETS.map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => updateDraft(r.id, { summary: preset.text })}
+                          className="rounded-full border border-border px-2.5 py-1 text-xs text-muted transition hover:border-[#5aa9e6]/50 hover:text-white"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
                     <textarea
                       value={draft.summary}
                       onChange={(e) => updateDraft(r.id, { summary: e.target.value })}
@@ -187,7 +215,15 @@ export default function AdminDeepDiveList({ initialRequests }: { initialRequests
                     </div>
                   )}
                   {r.summary && (
-                    <p className="rounded-lg bg-navy p-2 text-xs text-white">{r.summary}</p>
+                    <p
+                      className={`rounded-lg bg-navy p-2 text-xs ${
+                        r.category_counts && Object.keys(r.category_counts).length > 0
+                          ? 'text-white'
+                          : 'text-green-400'
+                      }`}
+                    >
+                      {r.summary}
+                    </p>
                   )}
                   {r.admin_notes && (
                     <p className="rounded-lg bg-navy p-2 text-xs text-muted">

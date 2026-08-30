@@ -40,6 +40,8 @@ create table if not exists reports (
   reporter_name text,
   reporter_email text,
   reporter_phone text,
+  reporter_clerk_user_id text, -- set only when the filer was signed in; null for anonymous reports
+  tracking_code text unique not null default upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
   evidence_urls text[] default '{}',
   status text not null default 'pending', -- pending | approved | removed
   created_at timestamptz not null default now(),
@@ -54,6 +56,12 @@ create table if not exists reports (
 create index if not exists idx_reports_phone_numbers on reports using gin (phone_numbers);
 create index if not exists idx_reports_subject_emails on reports using gin (subject_emails);
 create index if not exists idx_reports_status on reports (status);
+-- Powers the signed-in "My reports" dashboard page (only ever set for
+-- signed-in filers -- anonymous ones are null and excluded automatically).
+create index if not exists idx_reports_reporter_clerk on reports (reporter_clerk_user_id);
+-- tracking_code already has a unique index from the constraint above --
+-- it's what powers the public, no-login /report/status lookup page for
+-- anonymous filers to check their own report's status.
 
 -- Subscribers: one row per Clerk user, kept in sync by the Stripe webhook.
 -- Search access is gated on status = 'active'. Priority-search credits are
@@ -130,6 +138,33 @@ create table if not exists search_history (
 );
 
 create index if not exists idx_search_history_clerk on search_history (clerk_user_id, searched_at desc);
+
+-- Watches: a subscriber can "watch" a phone number or email they've
+-- searched so they get emailed if a NEW report on it is ever approved
+-- later, instead of having to keep manually re-searching it. One row per
+-- (subscriber, identifier) pair -- the unique constraint means toggling
+-- "watch" twice is harmless (upsert-safe). last_notified_at is set the
+-- last time an email actually went out for this watch, purely for
+-- debugging/audit, nothing reads it to gate anything.
+--
+-- The actual notification trigger lives in application code
+-- (api/admin/report's POST handler), fired only on the transition INTO
+-- 'approved' status -- not on every subsequent edit to an
+-- already-approved report -- so a watcher gets exactly one email per new
+-- report, not one per admin edit.
+create table if not exists watches (
+  id uuid primary key default gen_random_uuid(),
+  clerk_user_id text not null,
+  query_type text not null, -- phone | email
+  query_value text not null,
+  created_at timestamptz not null default now(),
+  last_notified_at timestamptz,
+  unique (clerk_user_id, query_type, query_value)
+);
+
+create index if not exists idx_watches_lookup on watches (query_type, query_value);
+create index if not exists idx_watches_clerk on watches (clerk_user_id);
+alter table watches enable row level security;
 
 -- Profile overrides: an admin-only manual adjustment to the category
 -- counts shown for a specific phone number or email, ON TOP OF whatever
