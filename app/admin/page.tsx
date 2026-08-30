@@ -4,6 +4,7 @@ import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
 import AdminReportList from './AdminReportList';
 import AdminDeepDiveList from './AdminDeepDiveList';
 import AdminSubscriberList from './AdminSubscriberList';
+import AdminProfileOverrides from './AdminProfileOverrides';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +43,16 @@ export default async function AdminPage() {
   }
 
   const supabase = getServiceClient();
+  // 5000 is effectively unlimited for how this site's volume works today
+  // -- this is the full admin audit trail (who filed what, and what they
+  // wrote), so it deliberately isn't capped the way subscriber-facing
+  // lists are. Use the search box in AdminReportList to find a specific
+  // number/email/name once this list grows.
   const { data: reports, count: totalReports } = await supabase
     .from('reports')
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(200);
+    .limit(5000);
 
   const { data: deepDives } = await supabase
     .from('deep_dive_requests')
@@ -70,17 +76,35 @@ export default async function AdminPage() {
             <h2 className="text-lg font-bold">Reports</h2>
             <p className="text-sm text-muted">
               {totalReports ?? 0} total{' '}
-              {totalReports && totalReports > 200 ? '(showing most recent 200)' : ''}
+              {totalReports && totalReports > 5000 ? '(showing most recent 5000)' : ''}
             </p>
           </div>
           <p className="mt-2 text-sm text-muted">
             Approve a report to make it count as "flagged" in search results.
-            Remove a report to take it down entirely. Full contents here are
-            never shown to subscribers or the public, only the yes/no
-            verdict is.
+            Remove a report to take it down entirely. Every field here can be
+            edited, and every report ever filed stays visible below (search
+            it by phone, email, subject name, or reporter) -- this is the
+            full audit trail of who filed what and what they wrote, and it's
+            admin-only, never shown to subscribers or the public.
           </p>
           <div className="mt-6">
             <AdminReportList initialReports={reports || []} />
+          </div>
+        </section>
+
+        <section className="mt-14 border-t border-border pt-10">
+          <h2 className="text-lg font-bold">Manual profile overrides</h2>
+          <p className="mt-2 text-sm text-muted">
+            Look up any phone number or email to see its real, filed-report
+            category counts, and optionally add a manual override on top of
+            a specific category (e.g. incidents you know about that aren't
+            worth filing as separate reports). Overrides add to the real
+            count at search time, they never replace or hide it -- there's
+            still no single "profile" row anywhere else in the app, this is
+            the one exception.
+          </p>
+          <div className="mt-6">
+            <AdminProfileOverrides />
           </div>
         </section>
 

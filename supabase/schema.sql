@@ -131,6 +131,35 @@ create table if not exists search_history (
 
 create index if not exists idx_search_history_clerk on search_history (clerk_user_id, searched_at desc);
 
+-- Profile overrides: an admin-only manual adjustment to the category
+-- counts shown for a specific phone number or email, ON TOP OF whatever
+-- real approved reports already say. There is no separate "profile"
+-- table for a phone/email in this system -- search_category_counts()
+-- below computes everything live from the reports table every time. This
+-- table exists purely so an admin can bump a count for a number/email
+-- based on something they know that hasn't been (or won't be) filed as a
+-- normal report -- e.g. "we know of 3 more Threats/Dangerous incidents
+-- from customer emails, not worth 3 separate report rows." One row per
+-- identifier (unique on query_type + query_value); category_counts is a
+-- jsonb map like {"Threats/Dangerous": 3} ADDED to the real counts at
+-- search time, never replacing them. notes is admin-only context for why
+-- the override exists, never shown to subscribers. updated_by records
+-- which admin last touched it, for accountability.
+create table if not exists profile_overrides (
+  id uuid primary key default gen_random_uuid(),
+  query_type text not null, -- phone | email
+  query_value text not null,
+  category_counts jsonb not null default '{}'::jsonb,
+  notes text check (char_length(notes) <= 500),
+  updated_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (query_type, query_value)
+);
+
+create index if not exists idx_profile_overrides_lookup on profile_overrides (query_type, query_value);
+alter table profile_overrides enable row level security;
+
 -- Search's core aggregation: for a given phone and/or email, count how
 -- many approved reports include each category. A report with two
 -- categories (e.g. Flake-No Show + Threats/Dangerous) counts once toward

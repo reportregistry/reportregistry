@@ -2,12 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { getServiceClient } from '@/lib/supabase';
 import { isAdminEmail } from '@/lib/admin';
+import { normalizePhone } from '@/lib/phone';
+import { SCAM_TYPES } from '@/lib/scamTypes';
 
 const VALID_STATUSES = ['pending', 'approved', 'removed'];
 
-// Moderation action: approve or remove a report. Gated by middleware
-// (sign-in required) plus the admin-email allowlist below -- being signed
-// in is not enough, you have to be one of the emails in ADMIN_EMAILS.
+type Body = {
+  id?: string;
+  status?: string;
+  admin_summary?: string | null;
+  phone_numbers?: string[];
+  subject_emails?: string[];
+  subject_first_name?: string | null;
+  scam_type?: string[];
+  description?: string;
+};
+
+// Moderation action: approve/remove a report, PLUS full editing of every
+// field on it -- phone numbers, emails, subject name, categories, and the
+// reporter's description. Gated by middleware (sign-in required) plus the
+// admin-email allowlist below -- being signed in is not enough, you have
+// to be one of the emails in ADMIN_EMAILS. Every field below is optional
+// in the request body; only the ones present get updated, so the report
+// edit form and the "just change status" flow can both hit this route.
 export async function POST(req: NextRequest) {
   const user = await currentUser();
   const email = user?.emailAddresses?.[0]?.emailAddress;
@@ -16,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Not authorized.' }, { status: 403 });
   }
 
-  let body: { id?: string; status?: string; admin_summary?: string | null };
+  let body: Body;
   try {
     body = await req.json();
   } catch {
@@ -41,15 +58,78 @@ export async function POST(req: NextRequest) {
     updates.admin_summary = trimmedSummary || null;
   }
 
+  // Full-detail edits -- same normalization the public report form uses,
+  // so an admin-edited number/email still matches correctly at search
+  // time (digits-only phone, lowercased trimmed email).
+  if (body.phone_numbers !== undefined) {
+    if (!Array.isArray(body.phone_numbers)) {
+      return NextResponse.json({ error: 'phone_numbers must be an array.' }, { status: 400 });
+    }
+    updates.phone_numbers = Array.from(
+      new Set(body.phone_numbers.map((p) => normalizePhone(p)).filter((p): p is string => Boolean(p)))
+    );
+  }
+
+  if (body.subject_emails !== undefined) {
+    if (!Array.isArray(body.subject_emails)) {
+      return NextResponse.json({ error: 'subject_emails must be an array.' }, { status: 400 });
+    }
+    updates.subject_emails = Array.from(
+      new Set(
+        body.subject_emails
+          .map((e) => (e || '').trim().toLowerCase())
+          .filter((e): e is string => Boolean(e))
+      )
+    );
+  }
+
+  if (
+    updates.phone_numbers !== undefined &&
+    updates.subject_emails !== undefined &&
+    (updates.phone_numbers as string[]).length === 0 &&
+    (updates.subject_emails as string[]).length === 0
+  ) {
+    return NextResponse.json(
+      { error: 'A report needs at least one phone number or email.' },
+      { status: 400 }
+    );
+  }
+
+  if (body.subject_first_name !== undefined) {
+    const name = (body.subject_first_name || '').trim();
+    updates.subject_first_name = name ? name.split(/\s+/)[0] : null;
+  }
+
+  if (body.scam_type !== undefined) {
+    if (!Array.isArray(body.scam_type)) {
+      return NextResponse.json({ error: 'scam_type must be an array.' }, { status: 400 });
+    }
+    updates.scam_type = Array.from(
+      new Set(body.scam_type.filter((t): t is string => SCAM_TYPES.includes(t)))
+    );
+  }
+
+  if (body.description !== undefined) {
+    const desc = (body.description || '').trim();
+    if (!desc) {
+      return NextResponse.json({ error: 'Description cannot be blank.' }, { status: 400 });
+    }
+    updates.description = desc;
+  }
+
   const supabase = getServiceClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('reports')
     .update(updates)
-    .eq('id', body.id);
+    .eq('id', body.id)
+    .select()
+    .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  // Returns the full updated row so the admin UI can sync its local state
+  // to exactly what got normalized/stored, rather than guessing.
+  return NextResponse.json({ ok: true, report: data });
 }

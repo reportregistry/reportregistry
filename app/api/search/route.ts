@@ -76,6 +76,32 @@ export async function GET(req: NextRequest) {
     categoryCounts[row.category] = Number(row.report_count);
   }
 
+  // Manual admin overrides (set in /admin > Manual profile overrides) add
+  // ON TOP of the real, filed-report counts above -- they never replace
+  // or hide a real report. There's still no persistent "profile" row for
+  // a phone/email; this is a per-identifier lookup against
+  // profile_overrides, the one place outside the reports table that
+  // contributes to what search shows.
+  const { data: overrideRow } = await supabase
+    .from('profile_overrides')
+    .select('category_counts')
+    .eq('query_type', phone ? 'phone' : 'email')
+    .eq('query_value', phone || email)
+    .maybeSingle();
+
+  let overrideTotal = 0;
+  if (overrideRow?.category_counts) {
+    for (const [category, value] of Object.entries(
+      overrideRow.category_counts as Record<string, number>
+    )) {
+      const n = Number(value) || 0;
+      categoryCounts[category] = (categoryCounts[category] ?? 0) + n;
+      overrideTotal += n;
+    }
+  }
+
+  const combinedTotalReports = (totalReports ?? 0) + overrideTotal;
+
   // Public snippets: up to 5 most recent approved reports on this
   // phone/email that an admin has explicitly written a short summary
   // for (admin_summary is opt-in per report -- most reports will have
@@ -116,13 +142,13 @@ export async function GET(req: NextRequest) {
     clerk_user_id: userId,
     query_type: phone ? 'phone' : 'email',
     query_value: phone || email,
-    total_reports: totalReports ?? 0,
+    total_reports: combinedTotalReports,
     category_counts: categoryCounts,
   });
 
   return NextResponse.json({
-    isScam: (totalReports ?? 0) > 0,
-    totalReports: totalReports ?? 0,
+    isScam: combinedTotalReports > 0,
+    totalReports: combinedTotalReports,
     categoryCounts,
     snippets,
   });
