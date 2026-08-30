@@ -60,17 +60,17 @@ export default function HomePage() {
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-muted">
             ReportRegistry is strictly for spam callers and people who scam,
-            defraud, or no-show on a scheduled appointment or service. It is
-            not a general dispute board, a background-check tool, or a place
-            to air personal grievances.
+            defraud, or fail to show up for a scheduled appointment or
+            service. It is not a general dispute board, a background check
+            tool, or a place to air personal grievances.
           </p>
           <div className="mt-10 grid gap-5 sm:grid-cols-3">
             <div className="rounded-xl border border-border bg-card p-6">
               <h3 className="mb-2 font-bold">Search &amp; verify</h3>
               <p className="text-sm text-muted">
                 Subscribers look up a phone number and see whether it's been
-                flagged, broken down by category (scam, spam, no-show,
-                threats). We only reveal those counts, never the underlying
+                flagged, broken down by category (scam, spam, missed
+                appointment, threats). We only reveal those counts, never the underlying
                 report text or who filed it, to protect everyone involved.
               </p>
             </div>
@@ -87,7 +87,7 @@ export default function HomePage() {
               <h3 className="mb-2 font-bold">Moderated &amp; deletable</h3>
               <p className="text-sm text-muted">
                 Every report is reviewed by our staff before it affects
-                search results. False or bad-faith reports get removed, and
+                search results. False or bad faith reports get removed, and
                 anyone named in a report can request review or removal.
               </p>
             </div>
@@ -116,7 +116,7 @@ export default function HomePage() {
                 $7.99<span className="text-base font-medium text-muted">/mo</span>
               </p>
               <p className="mt-3 text-sm text-muted">
-                Unlimited yes/no searches, plus 20 priority-search credits
+                Unlimited yes/no searches, plus 20 priority search credits
                 every month for numbers that come back with no report on
                 file.
               </p>
@@ -127,7 +127,7 @@ export default function HomePage() {
                 $74.99<span className="text-base font-medium text-muted">/yr</span>
               </p>
               <p className="mt-3 text-sm text-muted">
-                Same unlimited searches and 20 monthly priority-search
+                Same unlimited searches and 20 monthly priority search
                 credits, billed once a year instead of monthly.
               </p>
             </div>
@@ -139,8 +139,8 @@ export default function HomePage() {
                 $10<span className="text-base font-medium text-muted"> / 50 credits</span>
               </p>
               <p className="mt-3 text-sm text-muted">
-                Optional top-up for subscribers. Spend 1 credit to request a
-                manual deep-dive when a search comes back with nothing on
+                Optional top up for subscribers. Spend 1 credit to request a
+                manual deep dive when a search comes back with nothing on
                 file. Never expires.
               </p>
             </div>
@@ -163,7 +163,7 @@ export default function HomePage() {
             How it works
           </p>
           <h2 className="text-center text-2xl font-extrabold sm:text-3xl">
-            Simple, searchable, self-cleaning
+            Simple, searchable, self cleaning
           </h2>
           <div className="mt-10 space-y-6">
             {[
