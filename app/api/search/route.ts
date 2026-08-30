@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
     query_type: phone ? 'phone' : 'email',
     query_value: phone || email,
     total_reports: totalReports ?? 0,
+    category_counts: categoryCounts,
   });
 
   return NextResponse.json({

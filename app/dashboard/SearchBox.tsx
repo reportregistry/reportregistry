@@ -15,6 +15,7 @@ type HistoryItem = {
   query_type: string;
   query_value: string;
   total_reports: number;
+  category_counts: Record<string, number>;
   searched_at: string;
 };
 
@@ -72,14 +73,19 @@ export default function SearchBox({
         setResult(data);
         // Search succeeded, so the API already logged it server-side --
         // mirror that here so "Recent searches" updates without a reload.
+        // De-dupe by value first: re-searching something already in the
+        // list (e.g. clicking a history item again) should move it back
+        // to the top, not stack a duplicate copy underneath itself.
+        const value = isEmail ? email : phone;
         setHistory((prev) => [
           {
             query_type: isEmail ? 'email' : 'phone',
-            query_value: isEmail ? email : phone,
+            query_value: value,
             total_reports: data.totalReports,
+            category_counts: data.categoryCounts,
             searched_at: new Date().toISOString(),
           },
-          ...prev,
+          ...prev.filter((h) => h.query_value.toLowerCase() !== value.toLowerCase()),
         ].slice(0, 25));
       }
     } catch {
@@ -149,6 +155,46 @@ export default function SearchBox({
           {loading ? 'Checking…' : 'Check'}
         </button>
       </form>
+
+      {history.length > 0 && (
+        <div className="mt-4 text-left">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
+            Recent searches
+          </h2>
+          <div className="space-y-2">
+            {history.map((h, i) => {
+              const marks = SCAM_TYPES.map((c) => [c, h.category_counts?.[c] ?? 0] as const).filter(
+                ([, count]) => count > 0
+              );
+              return (
+                <button
+                  key={i}
+                  onClick={() => searchAgain(h.query_value)}
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-sm transition hover:border-orange/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="truncate text-white">{h.query_value}</span>
+                    <span className="ml-2 shrink-0 text-xs text-muted">
+                      {new Date(h.searched_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {marks.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                      {marks.map(([category, count]) => (
+                        <span key={category} className={`text-xs ${countColorClass(count)}`}>
+                          {category}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="mt-1 block text-xs text-green-400">clean</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mt-4 rounded-lg border border-red bg-red/10 p-4 text-sm">
@@ -240,31 +286,6 @@ export default function SearchBox({
         </div>
       )}
 
-      {history.length > 0 && (
-        <div className="mt-8 border-t border-border pt-6 text-left">
-          <h2 className="mb-3 text-center text-sm font-bold uppercase tracking-wide text-muted">
-            Recent searches
-          </h2>
-          <div className="space-y-1.5">
-            {history.map((h, i) => (
-              <button
-                key={i}
-                onClick={() => searchAgain(h.query_value)}
-                className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm transition hover:border-orange/40"
-              >
-                <span className="truncate text-white">{h.query_value}</span>
-                <span
-                  className={`ml-2 shrink-0 text-xs font-semibold ${
-                    h.total_reports > 0 ? 'text-red' : 'text-green-400'
-                  }`}
-                >
-                  {h.total_reports > 0 ? `${h.total_reports} report${h.total_reports === 1 ? '' : 's'}` : 'clean'}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

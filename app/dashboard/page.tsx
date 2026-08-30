@@ -23,13 +23,27 @@ async function getSubscriber(clerkUserId: string) {
 
 async function getSearchHistory(clerkUserId: string) {
   const supabase = getServiceClient();
+  // Every search gets logged, including repeats, so a number you check
+  // often would otherwise flood the list with copies of itself. Pull more
+  // rows than needed, then keep only the most recent row per query_value
+  // before capping at 25 -- de-duped, most-recent-first.
   const { data } = await supabase
     .from('search_history')
-    .select('query_type, query_value, total_reports, searched_at')
+    .select('query_type, query_value, total_reports, category_counts, searched_at')
     .eq('clerk_user_id', clerkUserId)
     .order('searched_at', { ascending: false })
-    .limit(25);
-  return data || [];
+    .limit(200);
+
+  const seen = new Set<string>();
+  const deduped = [];
+  for (const row of data || []) {
+    const key = row.query_value.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(row);
+    if (deduped.length >= 25) break;
+  }
+  return deduped;
 }
 
 async function getEnhancedReports(clerkUserId: string) {

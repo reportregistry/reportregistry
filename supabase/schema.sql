@@ -125,6 +125,7 @@ create table if not exists search_history (
   query_type text not null, -- phone | email
   query_value text not null,
   total_reports integer not null default 0,
+  category_counts jsonb not null default '{}'::jsonb,
   searched_at timestamptz not null default now()
 );
 
