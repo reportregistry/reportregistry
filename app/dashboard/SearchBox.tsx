@@ -200,72 +200,6 @@ export default function SearchBox({
         </button>
       </form>
 
-      {history.length > 0 && (
-        <div className="mt-4 text-left">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-muted">
-              Recent searches ({history.length})
-            </h2>
-            {totalHistoryPages > 1 && (
-              <span className="text-xs text-muted">
-                Page {historyPage + 1} of {totalHistoryPages}
-              </span>
-            )}
-          </div>
-          <div className="space-y-2">
-            {visibleHistory.map((h, i) => {
-              const marks = SCAM_TYPES.map((c) => [c, h.category_counts?.[c] ?? 0] as const).filter(
-                ([, count]) => count > 0
-              );
-              return (
-                <button
-                  key={`${h.query_value}-${h.searched_at}`}
-                  onClick={() => searchAgain(h.query_value)}
-                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-sm transition hover:border-orange/40"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="truncate text-white">{h.query_value}</span>
-                    <span className="ml-2 shrink-0 text-xs text-muted">
-                      {new Date(h.searched_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {marks.length > 0 ? (
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                      {marks.map(([category, count]) => (
-                        <span key={category} className={`text-xs ${countColorClass(count)}`}>
-                          {category}: {count}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="mt-1 block text-xs text-green-400">clean</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {totalHistoryPages > 1 && (
-            <div className="mt-3 flex items-center justify-center gap-3">
-              <button
-                onClick={() => setHistoryPage((p) => Math.max(0, p - 1))}
-                disabled={historyPage === 0}
-                className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted transition hover:text-white disabled:opacity-30"
-              >
-                Prev
-              </button>
-              <button
-                onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages - 1, p + 1))}
-                disabled={historyPage >= totalHistoryPages - 1}
-                className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted transition hover:text-white disabled:opacity-30"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
       {error && (
         <div className="mt-4 rounded-lg border border-red bg-red/10 p-4 text-sm">
           {error}
@@ -384,6 +318,72 @@ export default function SearchBox({
               <p className="mt-1.5 text-muted">{s.summary}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {history.length > 0 && (
+        <div className="mt-6 border-t border-border pt-4 text-left">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-muted">
+              Recent searches ({history.length})
+            </h2>
+            {totalHistoryPages > 1 && (
+              <span className="text-xs text-muted">
+                Page {historyPage + 1} of {totalHistoryPages}
+              </span>
+            )}
+          </div>
+          <div className="space-y-2">
+            {visibleHistory.map((h, i) => {
+              const marks = SCAM_TYPES.map((c) => [c, h.category_counts?.[c] ?? 0] as const).filter(
+                ([, count]) => count > 0
+              );
+              return (
+                <button
+                  key={`${h.query_value}-${h.searched_at}`}
+                  onClick={() => searchAgain(h.query_value)}
+                  className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-sm transition hover:border-orange/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="truncate text-white">{h.query_value}</span>
+                    <span className="ml-2 shrink-0 text-xs text-muted">
+                      {new Date(h.searched_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {marks.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                      {marks.map(([category, count]) => (
+                        <span key={category} className={`text-xs ${countColorClass(count)}`}>
+                          {category}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="mt-1 block text-xs text-green-400">clean</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {totalHistoryPages > 1 && (
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setHistoryPage((p) => Math.max(0, p - 1))}
+                disabled={historyPage === 0}
+                className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted transition hover:text-white disabled:opacity-30"
+              >
+                Prev
+              </button>
+              <button
+                onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages - 1, p + 1))}
+                disabled={historyPage >= totalHistoryPages - 1}
+                className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted transition hover:text-white disabled:opacity-30"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import AdminReportList from './AdminReportList';
 import AdminDeepDiveList from './AdminDeepDiveList';
 import AdminSubscriberList from './AdminSubscriberList';
 import AdminProfileOverrides from './AdminProfileOverrides';
+import AdminBulkOverride from './AdminBulkOverride';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,9 @@ export default async function AdminPage() {
           </p>
           <div className="mt-6">
             <AdminProfileOverrides />
+          </div>
+          <div className="mt-6">
+            <AdminBulkOverride />
           </div>
         </section>
 

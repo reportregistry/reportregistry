@@ -167,6 +167,25 @@ export default function ReportForm() {
     }
   }
 
+  // Resets everything back to a fresh form. Flipping `done` back to false
+  // is enough to get empty inputs back (the whole <form> subtree gets
+  // remounted since it's swapped out entirely for the "thanks" screen
+  // above, not just hidden), but scamTypes/showPhone2/etc are ordinary
+  // component state that survives that swap, so those need clearing by
+  // hand or a second report would start with the last one's categories
+  // still selected.
+  function resetForm() {
+    setDone(false);
+    setTrackingCode('');
+    setError('');
+    setScamTypes([]);
+    setShowPhone2(false);
+    setShowEmail(Boolean(prefillEmail));
+    setShowEmail2(false);
+    setPhoneCode('+1');
+    setPhone2Code('+1');
+  }
+
   if (done) {
     return (
       <div className="mx-auto max-w-lg rounded-xl border border-orange bg-orange/10 p-8 text-center">
@@ -198,6 +217,12 @@ export default function ReportForm() {
             </div>
           )
         )}
+        <button
+          onClick={resetForm}
+          className="mt-6 rounded-lg border border-orange px-5 py-2.5 text-sm font-semibold text-orange transition hover:bg-orange/10"
+        >
+          File another report
+        </button>
       </div>
     );
   }
