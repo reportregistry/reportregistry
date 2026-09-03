@@ -669,9 +669,11 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                   </p>
                   <p>
                     <span className="text-muted">Reporter: </span>
-                    {[r.reporter_name, r.reporter_email || r.reporter_phone]
-                      .filter(Boolean)
-                      .join(', ') || '—'}
+                    {isAdminFiled(r)
+                      ? 'Anonymous (filed by admin)'
+                      : [r.reporter_name, r.reporter_email || r.reporter_phone]
+                          .filter(Boolean)
+                          .join(', ') || '—'}
                   </p>
                 </div>
 

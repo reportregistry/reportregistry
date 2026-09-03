@@ -90,8 +90,17 @@ export async function POST(req: NextRequest) {
       scam_type,
       description,
       admin_summary,
-      reporter_name: user?.firstName ? `Admin (${user.firstName})` : 'Admin',
-      reporter_email: email || null,
+      // Reporter contact fields are deliberately left blank here, unlike a
+      // normal filed-by-a-real-person report -- there's no actual reporter
+      // to trace back to, so we don't attach the admin's own personal
+      // email/phone to it. reporter_name stays a plain "Admin" marker
+      // (used by isAdminFiled() in AdminReportList.tsx to tell these
+      // reports apart), and reporter_clerk_user_id still records which
+      // admin account added it, for the audit trail, without exposing
+      // contact info anywhere in the report itself.
+      reporter_name: 'Admin',
+      reporter_email: null,
+      reporter_phone: null,
       reporter_clerk_user_id: user?.id || null,
       status,
     })
