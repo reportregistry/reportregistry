@@ -225,11 +225,11 @@ export default function SearchBox({
           onClick={toggleWatch}
           disabled={watchBusy}
           className={`mt-2 w-full text-center text-xs transition disabled:opacity-50 ${
-            watching ? 'text-orange' : 'text-muted hover:text-white'
+            watching ? 'text-[#2dd4bf]' : 'text-muted hover:text-[#2dd4bf]'
           }`}
         >
           {watching
-            ? '★ Watching -- you\'ll get an email if a new report lands on this'
+            ? '★ Watching, you\'ll get an email if a new report lands on this'
             : '☆ Watch this number/email for future reports'}
         </button>
       )}

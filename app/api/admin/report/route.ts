@@ -80,6 +80,7 @@ type Body = {
   id?: string;
   status?: string;
   admin_summary?: string | null;
+  reporter_public_note?: string | null;
   public_note_approved?: boolean;
   phone_numbers?: string[];
   subject_emails?: string[];
@@ -134,6 +135,21 @@ export async function POST(req: NextRequest) {
   // stays unpublished if an admin doesn't want to vouch for it verbatim.
   if (body.public_note_approved !== undefined) {
     updates.public_note_approved = Boolean(body.public_note_approved);
+  }
+
+  // Lets an admin lightly edit the reporter's own wording (fix a typo,
+  // trim something identifying) before approving it -- still capped at the
+  // same 500 characters as when the reporter first wrote it. Blank clears
+  // it back to null, same convention as admin_summary above.
+  if (body.reporter_public_note !== undefined) {
+    const trimmedNote = body.reporter_public_note?.trim();
+    if (trimmedNote && trimmedNote.length > 500) {
+      return NextResponse.json(
+        { error: 'Public note must be 500 characters or fewer.' },
+        { status: 400 }
+      );
+    }
+    updates.reporter_public_note = trimmedNote || null;
   }
 
   // Full-detail edits -- same normalization the public report form uses,

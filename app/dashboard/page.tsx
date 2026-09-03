@@ -1,11 +1,8 @@
-import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
-import SearchBox from './SearchBox';
 import SubscribeButton from './SubscribeButton';
-import EnhancedReportsList from './EnhancedReportsList';
 import ManageSubscriptionButton from './ManageSubscriptionButton';
-import WatchList from './WatchList';
+import DashboardTabs from './DashboardTabs';
 
 async function getSubscriber(clerkUserId: string) {
   const supabase = getServiceClient();
@@ -102,27 +99,17 @@ export default async function DashboardPage() {
       <h1 className="text-3xl font-extrabold">Search the Registry</h1>
 
       {isActive ? (
-        <div className="mt-10">
-          <SearchBox initialCredits={credits} initialHistory={searchHistory} />
-          <p className="mt-6 text-sm text-muted">
-            Have a whole list to report?{' '}
-            <Link href="/dashboard/bulk-report" className="text-orange">
-              Bulk-report it here
-            </Link>
-            .
-          </p>
-          <div className="mx-auto mt-14 max-w-md text-left">
-            <h2 className="mb-3 text-center text-lg font-bold">Watching</h2>
-            <WatchList initialWatches={watches} />
-          </div>
-          <div className="mx-auto mt-14 max-w-md text-left">
-            <h2 className="mb-3 text-center text-lg font-bold">Enhanced Reports</h2>
-            <EnhancedReportsList reports={enhancedReports} />
-          </div>
+        <>
+          <DashboardTabs
+            initialCredits={credits}
+            initialHistory={searchHistory}
+            watches={watches}
+            enhancedReports={enhancedReports}
+          />
           <div className="mt-8">
             <ManageSubscriptionButton />
           </div>
-        </div>
+        </>
       ) : (
         <div className="mx-auto mt-10 max-w-md rounded-xl border border-border bg-card p-8">
           <p className="mb-6 text-muted">

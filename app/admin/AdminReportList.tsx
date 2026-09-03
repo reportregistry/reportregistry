@@ -48,6 +48,20 @@ function isAdminFiled(r: Report): boolean {
   return r.reporter_name === 'Admin' || (r.reporter_name?.startsWith('Admin (') ?? false);
 }
 
+// When a reporter picks the "Other" category, whatever they typed to
+// explain it gets tucked into the private description as a
+// "[Other: ...]" prefix (see app/api/report/route.ts) -- like the rest of
+// description, it's admin-only by default. This just pulls that detail
+// back out so it can be shown in its own labeled box with a one-click
+// "use as public summary" button, rather than making the admin hunt for
+// it inside the raw description text. It never gets shown to subscribers
+// on its own; only the Public summary field (saved separately, below)
+// does that.
+function extractOtherDetail(description: string | null): string | null {
+  const match = description?.match(/^\[Other: (.+?)\]/);
+  return match ? match[1] : null;
+}
+
 function draftFromReport(r: Report): EditDraft {
   return {
     phone_numbers: (r.phone_numbers || []).join(', '),
@@ -88,6 +102,9 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, EditDraft>>({});
   const [editError, setEditError] = useState<Record<string, string>>({});
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [noteError, setNoteError] = useState<Record<string, string>>({});
   const [showAdd, setShowAdd] = useState(false);
   const [addDraft, setAddDraft] = useState<AddDraft>(EMPTY_ADD_DRAFT);
   const [addBusy, setAddBusy] = useState(false);
@@ -300,6 +317,59 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
           prev.map((r) => (r.id === report.id ? { ...r, public_note_approved: next } : r))
         );
       }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function startNoteEdit(r: Report) {
+    setEditingNoteId(r.id);
+    setNoteError((prev) => ({ ...prev, [r.id]: '' }));
+    setNoteDrafts((prev) => ({ ...prev, [r.id]: prev[r.id] ?? (r.reporter_public_note || '') }));
+  }
+
+  function cancelNoteEdit(id: string) {
+    setEditingNoteId(null);
+    setNoteError((prev) => ({ ...prev, [id]: '' }));
+    setNoteDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  async function saveNoteEdit(report: Report) {
+    const draft = noteDrafts[report.id] ?? report.reporter_public_note ?? '';
+    if (draft.length > 500) {
+      setNoteError((prev) => ({ ...prev, [report.id]: 'Must be 500 characters or fewer.' }));
+      return;
+    }
+    setNoteError((prev) => ({ ...prev, [report.id]: '' }));
+    setBusyId(report.id);
+    try {
+      const res = await fetch('/api/admin/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: report.id,
+          status: report.status,
+          reporter_public_note: draft,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNoteError((prev) => ({ ...prev, [report.id]: data.error || 'Failed to save.' }));
+        return;
+      }
+      setReports((prev) =>
+        prev.map((r) => (r.id === report.id ? { ...r, reporter_public_note: draft.trim() || null } : r))
+      );
+      setEditingNoteId(null);
+      setNoteDrafts((prev) => {
+        const next = { ...prev };
+        delete next[report.id];
+        return next;
+      });
     } finally {
       setBusyId(null);
     }
@@ -683,6 +753,26 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                     {r.description}
                   </p>
                 )}
+
+                {extractOtherDetail(r.description) && (
+                  <div className="mt-3 rounded-lg border border-orange/30 bg-orange/5 p-3">
+                    <p className="mb-1.5 text-xs font-semibold text-orange">
+                      Reporter's "Other" detail (admin-only until you publish it)
+                    </p>
+                    <p className="text-sm text-white">{extractOtherDetail(r.description)}</p>
+                    <button
+                      onClick={() =>
+                        setSummaryDrafts((prev) => ({
+                          ...prev,
+                          [r.id]: extractOtherDetail(r.description) || '',
+                        }))
+                      }
+                      className="mt-2 rounded-lg border border-orange/40 px-3 py-1.5 text-xs font-semibold text-orange"
+                    >
+                      Use as public summary
+                    </button>
+                  </div>
+                )}
               </>
             )}
 
@@ -733,18 +823,65 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                     {r.public_note_approved ? 'Approved, visible on search' : 'Not approved'}
                   </span>
                 </div>
-                <p className="rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
-                <button
-                  disabled={busyId === r.id}
-                  onClick={() => togglePublicNote(r)}
-                  className={`mt-2 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
-                    r.public_note_approved
-                      ? 'border border-red text-red'
-                      : 'bg-[#a78bfa] text-navy'
-                  }`}
-                >
-                  {r.public_note_approved ? 'Unapprove' : 'Approve to show publicly'}
-                </button>
+
+                {editingNoteId === r.id ? (
+                  <>
+                    <textarea
+                      value={noteDrafts[r.id] ?? r.reporter_public_note ?? ''}
+                      onChange={(e) =>
+                        setNoteDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))
+                      }
+                      maxLength={500}
+                      rows={3}
+                      className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-[#a78bfa]"
+                    />
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-xs text-muted">
+                        {(noteDrafts[r.id] ?? r.reporter_public_note ?? '').length}/500
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => cancelNoteEdit(r.id)}
+                          className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          disabled={busyId === r.id}
+                          onClick={() => saveNoteEdit(r)}
+                          className="rounded-lg bg-[#a78bfa] px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-50"
+                        >
+                          Save note
+                        </button>
+                      </div>
+                    </div>
+                    {noteError[r.id] && <p className="mt-1 text-xs text-red">{noteError[r.id]}</p>}
+                  </>
+                ) : (
+                  <p className="rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
+                )}
+
+                <div className="mt-2 flex gap-2">
+                  {editingNoteId !== r.id && (
+                    <button
+                      onClick={() => startNoteEdit(r)}
+                      className="rounded-lg border border-[#a78bfa]/40 px-3 py-1.5 text-xs font-semibold text-[#a78bfa]"
+                    >
+                      Edit note
+                    </button>
+                  )}
+                  <button
+                    disabled={busyId === r.id}
+                    onClick={() => togglePublicNote(r)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                      r.public_note_approved
+                        ? 'border border-red text-red'
+                        : 'bg-[#a78bfa] text-navy'
+                    }`}
+                  >
+                    {r.public_note_approved ? 'Unapprove' : 'Approve to show publicly'}
+                  </button>
+                </div>
               </div>
             )}
 
