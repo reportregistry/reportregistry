@@ -37,6 +37,17 @@ type EditDraft = {
   description: string;
 };
 
+// Reports created via the "File a report (as admin)" tab get a
+// reporter_name of "Admin" or "Admin (Name)" (see
+// app/api/admin/report/create/route.ts) -- that's the marker used here to
+// tell an admin-filed report apart from a normal one filed by a real
+// reporter, so the "Unknown" phone/email display below only applies to the
+// ones an admin actually filed, not to every report that happens to be
+// missing one field.
+function isAdminFiled(r: Report): boolean {
+  return r.reporter_name === 'Admin' || (r.reporter_name?.startsWith('Admin (') ?? false);
+}
+
 function draftFromReport(r: Report): EditDraft {
   return {
     phone_numbers: (r.phone_numbers || []).join(', '),
@@ -316,11 +327,38 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   return (
     <div>
       <div className="mb-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by phone, email, subject name, or reporter. This is the full audit trail, no cap"
+          className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+        />
+      </div>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition ${
+              filter === f
+                ? 'border-white bg-white text-navy'
+                : 'border-border text-muted hover:text-white'
+            }`}
+          >
+            {f} ({f === 'all' ? reports.length : reports.filter((r) => r.status === f).length})
+          </button>
+        ))}
         <button
           onClick={() => setShowAdd((v) => !v)}
-          className="rounded-lg border border-[#5aa9e6]/40 bg-[#5aa9e6]/10 px-3 py-1.5 text-xs font-semibold text-[#5aa9e6]"
+          className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+            showAdd
+              ? 'border-[#5aa9e6] bg-[#5aa9e6] text-navy'
+              : 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6] hover:border-[#5aa9e6]'
+          }`}
         >
-          {showAdd ? 'Cancel' : '+ Add report'}
+          {showAdd ? 'Close' : 'File a report (as admin)'}
         </button>
       </div>
 
@@ -331,7 +369,9 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
             one you're bringing in from elsewhere. It's saved as approved by
             default (you're the one reviewing it), so it counts in search
             results right away; switch it to pending if you'd rather queue
-            it for a second look first.
+            it for a second look first. Leave phone or email blank if you
+            don't have it; it'll just show as "Unknown" here in the admin
+            list until you (or a future edit) fill it in.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-xs">
@@ -453,32 +493,6 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
           </div>
         </div>
       )}
-
-      <div className="mb-4">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by phone, email, subject name, or reporter. This is the full audit trail, no cap"
-          className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
-        />
-      </div>
-
-      <div className="mb-6 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition ${
-              filter === f
-                ? 'border-white bg-white text-navy'
-                : 'border-border text-muted hover:text-white'
-            }`}
-          >
-            {f} ({f === 'all' ? reports.length : reports.filter((r) => r.status === f).length})
-          </button>
-        ))}
-      </div>
 
       {visible.length === 0 && (
         <p className="text-sm text-muted">
@@ -631,11 +645,19 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 <div className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                   <p>
                     <span className="text-muted">Phone(s): </span>
-                    {r.phone_numbers?.length ? r.phone_numbers.join(', ') : '—'}
+                    {r.phone_numbers?.length
+                      ? r.phone_numbers.join(', ')
+                      : isAdminFiled(r)
+                        ? 'Unknown'
+                        : '—'}
                   </p>
                   <p>
                     <span className="text-muted">Email(s): </span>
-                    {r.subject_emails?.length ? r.subject_emails.join(', ') : '—'}
+                    {r.subject_emails?.length
+                      ? r.subject_emails.join(', ')
+                      : isAdminFiled(r)
+                        ? 'Unknown'
+                        : '—'}
                   </p>
                   <p>
                     <span className="text-muted">First name: </span>
