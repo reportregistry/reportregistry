@@ -54,8 +54,24 @@ create table if not exists reports (
   -- author.
   reporter_public_note text check (char_length(reporter_public_note) <= 500),
   public_note_approved boolean not null default false,
+  -- "Red Alert": a one-off, admin-written email blast about this specific
+  -- report, sent to every currently-active subscriber on demand (see
+  -- app/api/admin/report/alert/route.ts) -- separate from the Watch
+  -- feature, which only emails the specific subscribers who chose to
+  -- watch this number/email. alert_message is admin-authored, same
+  -- editorial rule as admin_summary; alert_sent_at is null until the
+  -- admin actually sends it, and gets overwritten (not appended) on a
+  -- resend, so it always reflects the most recent send.
+  alert_message text check (char_length(alert_message) <= 1000),
+  alert_sent_at timestamptz,
   evidence_urls text[] default '{}',
   status text not null default 'pending', -- pending | approved | removed
+  -- Set the moment a report moves out of 'pending' (see
+  -- app/api/admin/report/route.ts), cleared back to null if it's ever
+  -- reset to pending. Powers the "My Reports" unread badge in
+  -- SiteHeader.tsx -- see report_inbox_state below. Not the same as an
+  -- "updated_at" column; it only tracks this one specific transition.
+  resolved_at timestamptz,
   created_at timestamptz not null default now(),
   constraint reports_has_identifier check (
     coalesce(array_length(phone_numbers, 1), 0) > 0
@@ -177,6 +193,19 @@ create table if not exists watches (
 create index if not exists idx_watches_lookup on watches (query_type, query_value);
 create index if not exists idx_watches_clerk on watches (clerk_user_id);
 alter table watches enable row level security;
+
+-- Tracks, per signed-in user, the last time they viewed /dashboard/my-reports.
+-- Powers the unread-count badge on the "My Reports" nav link (see
+-- app/components/SiteHeader.tsx), same idea as an email inbox's unread
+-- count. A report counts as "unread" once it moves out of pending
+-- (reports.resolved_at gets set, see app/api/admin/report/route.ts) if
+-- that happened after this row's last_seen_at. No row yet is treated as
+-- "never viewed," so everything resolved counts as unread until their
+-- first visit.
+create table if not exists report_inbox_state (
+  clerk_user_id text primary key,
+  last_seen_at timestamptz not null default now()
+);
 
 -- Profile overrides: an admin-only manual adjustment to the category
 -- counts shown for a specific phone number or email, ON TOP OF whatever

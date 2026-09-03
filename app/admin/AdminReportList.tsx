@@ -13,6 +13,8 @@ type Report = {
   admin_summary: string | null;
   reporter_public_note: string | null;
   public_note_approved: boolean;
+  alert_message: string | null;
+  alert_sent_at: string | null;
   reporter_name: string | null;
   reporter_email: string | null;
   reporter_phone: string | null;
@@ -108,6 +110,11 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   const [showAdd, setShowAdd] = useState(false);
   const [addDraft, setAddDraft] = useState<AddDraft>(EMPTY_ADD_DRAFT);
   const [addBusy, setAddBusy] = useState(false);
+  const [alertDrafts, setAlertDrafts] = useState<Record<string, string>>({});
+  const [alertConfirmId, setAlertConfirmId] = useState<string | null>(null);
+  const [alertBusy, setAlertBusy] = useState<string | null>(null);
+  const [alertError, setAlertError] = useState<Record<string, string>>({});
+  const [alertSentCount, setAlertSentCount] = useState<Record<string, number>>({});
   const [addError, setAddError] = useState('');
 
   function toggleAddCategory(category: string) {
@@ -376,6 +383,39 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
       });
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function sendRedAlert(report: Report) {
+    const message = (alertDrafts[report.id] ?? report.alert_message ?? '').trim();
+    if (!message) {
+      setAlertError((prev) => ({ ...prev, [report.id]: 'Write a message before sending.' }));
+      return;
+    }
+    setAlertError((prev) => ({ ...prev, [report.id]: '' }));
+    setAlertBusy(report.id);
+    try {
+      const res = await fetch('/api/admin/report/alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: report.id, message }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAlertError((prev) => ({ ...prev, [report.id]: data.error || 'Failed to send.' }));
+        return;
+      }
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === report.id
+            ? { ...r, alert_message: message, alert_sent_at: new Date().toISOString() }
+            : r
+        )
+      );
+      setAlertSentCount((prev) => ({ ...prev, [report.id]: data.sentCount }));
+      setAlertConfirmId(null);
+    } finally {
+      setAlertBusy(null);
     }
   }
 
@@ -885,6 +925,68 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                     {r.public_note_approved ? 'Unapprove' : 'Approve to show publicly'}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {r.status === 'approved' && (
+              <div className="mt-3 rounded-lg border border-red/40 bg-red/5 p-3">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-red">
+                    Red Alert: email every active subscriber about this report
+                  </span>
+                  {r.alert_sent_at && (
+                    <span className="rounded-full border border-red/40 px-2 py-0.5 text-xs font-semibold text-red">
+                      Sent {new Date(r.alert_sent_at).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+                <textarea
+                  value={alertDrafts[r.id] ?? r.alert_message ?? ''}
+                  onChange={(e) =>
+                    setAlertDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))
+                  }
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="What should subscribers know, and why is it urgent? This is separate from the Public summary and goes out as an email to everyone with an active subscription."
+                  className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-red"
+                />
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-xs text-muted">
+                    {(alertDrafts[r.id] ?? r.alert_message ?? '').length}/1000
+                  </span>
+                  {alertConfirmId === r.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted">Email ALL active subscribers now?</span>
+                      <button
+                        onClick={() => setAlertConfirmId(null)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        disabled={alertBusy === r.id}
+                        onClick={() => sendRedAlert(r)}
+                        className="rounded-lg bg-red px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {alertBusy === r.id ? 'Sending...' : 'Confirm, send now'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setAlertConfirmId(r.id)}
+                      className="rounded-lg border border-red px-3 py-1.5 text-xs font-semibold text-red"
+                    >
+                      {r.alert_sent_at ? 'Send updated alert' : 'Send Red Alert'}
+                    </button>
+                  )}
+                </div>
+                {alertSentCount[r.id] !== undefined && (
+                  <p className="mt-1 text-xs text-muted">
+                    Last send reached {alertSentCount[r.id]} active subscriber
+                    {alertSentCount[r.id] === 1 ? '' : 's'}.
+                  </p>
+                )}
+                {alertError[r.id] && <p className="mt-1 text-xs text-red">{alertError[r.id]}</p>}
               </div>
             )}
 

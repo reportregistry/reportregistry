@@ -31,12 +31,31 @@ export default async function MyReportsPage() {
   }
 
   const supabase = getServiceClient();
+
+  // Read the PREVIOUS last_seen_at before overwriting it below, so we can
+  // still tell which of these reports were resolved since the last visit
+  // (used for the "New" tag) even though loading this page immediately
+  // marks everything as seen for the nav badge in SiteHeader.tsx.
+  const { data: inboxState } = await supabase
+    .from('report_inbox_state')
+    .select('last_seen_at')
+    .eq('clerk_user_id', userId)
+    .maybeSingle();
+  const previousLastSeenAt = inboxState?.last_seen_at || new Date(0).toISOString();
+
   const { data: reports } = await supabase
     .from('reports')
-    .select('id, phone_numbers, subject_emails, subject_first_name, status, created_at, tracking_code')
+    .select('id, phone_numbers, subject_emails, subject_first_name, status, resolved_at, created_at, tracking_code')
     .eq('reporter_clerk_user_id', userId)
     .order('created_at', { ascending: false })
     .limit(200);
+
+  // Loading this page IS "reading the inbox" -- mark everything seen as
+  // of right now, so the unread badge in SiteHeader.tsx clears. Best-effort:
+  // a failure here shouldn't stop the page from showing the reports.
+  await supabase
+    .from('report_inbox_state')
+    .upsert({ clerk_user_id: userId, last_seen_at: new Date().toISOString() });
 
   return (
     <main className="min-h-screen px-6 py-24 text-center">
@@ -56,26 +75,40 @@ export default async function MyReportsPage() {
           </p>
         ) : (
           <div className="space-y-3">
-            {reports.map((r) => (
-              <div key={r.id} className="rounded-xl border border-border bg-card p-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">
-                    {[...(r.phone_numbers || []), ...(r.subject_emails || [])].join(', ') || '—'}
-                  </span>
-                  <span
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
-                      STATUS_STYLES[r.status] || ''
-                    }`}
-                  >
-                    {r.status}
-                  </span>
+            {reports.map((r) => {
+              const isNew =
+                r.status !== 'pending' && r.resolved_at && r.resolved_at > previousLastSeenAt;
+              return (
+                <div
+                  key={r.id}
+                  className={`rounded-xl border p-5 ${
+                    isNew ? 'border-orange bg-orange/5' : 'border-border bg-card'
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-semibold">
+                      {[...(r.phone_numbers || []), ...(r.subject_emails || [])].join(', ') || '—'}
+                      {isNew && (
+                        <span className="ml-2 rounded-full bg-orange px-2 py-0.5 text-[10px] font-bold uppercase text-navy">
+                          New
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
+                        STATUS_STYLES[r.status] || ''
+                      }`}
+                    >
+                      {r.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    Filed {new Date(r.created_at).toLocaleDateString()}
+                    {r.subject_first_name ? `, ${r.subject_first_name}` : ''}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-muted">
-                  Filed {new Date(r.created_at).toLocaleDateString()}
-                  {r.subject_first_name ? `, ${r.subject_first_name}` : ''}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

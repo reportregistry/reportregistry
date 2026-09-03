@@ -223,6 +223,16 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   const wasApproved = existing?.status === 'approved';
 
+  // resolved_at powers the "My Reports" unread badge (see
+  // report_inbox_state in supabase/schema.sql and SiteHeader.tsx). Only
+  // touch it when the status is actually changing -- every other edit on
+  // this route (saving a summary, approving a public note, tweaking
+  // details) re-sends the CURRENT status unchanged, and none of those
+  // should re-flag an already-resolved report as freshly resolved again.
+  if (existing && existing.status !== body.status) {
+    updates.resolved_at = body.status === 'pending' ? null : new Date().toISOString();
+  }
+
   const { data, error } = await supabase
     .from('reports')
     .update(updates)
