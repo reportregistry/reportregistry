@@ -103,16 +103,19 @@ export async function GET(req: NextRequest) {
   const combinedTotalReports = (totalReports ?? 0) + overrideTotal;
 
   // Public snippets: up to 5 most recent approved reports on this
-  // phone/email that an admin has explicitly written a short summary
-  // for (admin_summary is opt-in per report -- most reports will have
-  // none, and this stays empty for them). subject_first_name and
-  // scam_type are included the same way they always were; description
-  // and reporter info are never selected here.
+  // phone/email with a short blurb to show. Two sources feed this, same
+  // display slot either way: an admin_summary (staff-written, opt-in per
+  // report) OR a reporter_public_note the reporter wrote themselves AND
+  // an admin has specifically approved via public_note_approved (see
+  // supabase/schema.sql) -- the reporter's raw description is never
+  // eligible regardless. subject_first_name and scam_type are included
+  // the same way they always were; reporter identity is never selected
+  // here either way.
   let snippetQuery = supabase
     .from('reports')
-    .select('subject_first_name, scam_type, admin_summary, created_at')
+    .select('subject_first_name, scam_type, admin_summary, reporter_public_note, public_note_approved, created_at')
     .eq('status', 'approved')
-    .not('admin_summary', 'is', null)
+    .or('admin_summary.not.is.null,public_note_approved.eq.true')
     .order('created_at', { ascending: false })
     .limit(5);
   if (phone && email) {
@@ -131,7 +134,10 @@ export async function GET(req: NextRequest) {
   const snippets = (snippetRows || []).map((r) => ({
     firstName: r.subject_first_name,
     categories: r.scam_type || [],
-    summary: r.admin_summary,
+    // Prefer the staff-written summary if one exists; otherwise fall back
+    // to the reporter's own approved note. Never both, and never the raw
+    // (unapproved) reporter_public_note or description.
+    summary: r.admin_summary || (r.public_note_approved ? r.reporter_public_note : null),
     reportedAt: r.created_at,
   }));
 

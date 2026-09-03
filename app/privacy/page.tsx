@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <main className="min-h-screen px-6 py-20">
       <div className="mx-auto max-w-3xl">
         <h1 className="text-3xl font-extrabold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-muted">Last updated: August 26, 2026</p>
+        <p className="mt-2 text-sm text-muted">Last updated: August 31, 2026</p>
 
         <div className="mt-10 space-y-8 text-sm leading-relaxed text-muted">
           <section>
@@ -30,13 +30,16 @@ export default function PrivacyPage() {
               has any approved reports on file and, if so, a count broken
               down by category (for example, how many "Threats/Dangerous"
               vs. "Flake-No Show" reports). They never see the reporter's
-              identity or the reporter's own written description. For some
-              approved reports, our staff may choose to publish a short,
-              staff-written summary (500 characters or fewer) alongside the
-              subject's first name; this only happens when an admin has
-              specifically written and approved it. Full report details,
-              including the reporter's identity and description, remain
-              visible only to site administrators.
+              identity or the reporter's own written description of what
+              happened. For some approved reports, a short note (500
+              characters or fewer) may be published alongside the subject's
+              first name -- either written by our staff, or written by the
+              reporter themselves specifically to be shown publicly. Either
+              way, that note is only published once an admin has personally
+              reviewed and approved it; it is never shown just because the
+              underlying report was approved. Full report details, including
+              the reporter's identity and description, remain visible only
+              to site administrators.
             </p>
           </section>
 

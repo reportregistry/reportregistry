@@ -42,6 +42,18 @@ create table if not exists reports (
   reporter_phone text,
   reporter_clerk_user_id text, -- set only when the filer was signed in; null for anonymous reports
   tracking_code text unique not null default upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
+  -- Reporter-authored public note: unlike `description` (always admin-only)
+  -- this is written by the REPORTER specifically to be shown publicly, but
+  -- it stays hidden (public_note_approved = false) until an admin reads it
+  -- and specifically approves it -- same safety net as admin_summary, just
+  -- letting the reporter's own words through as-is instead of a staff
+  -- rewrite. Never shown just because the report itself got approved. Once
+  -- approved, it surfaces as a snippet on search alongside admin_summary
+  -- ones (see search_category_counts usage in api/search) -- same
+  -- character limit (500) and same display mechanism, just a different
+  -- author.
+  reporter_public_note text check (char_length(reporter_public_note) <= 500),
+  public_note_approved boolean not null default false,
   evidence_urls text[] default '{}',
   status text not null default 'pending', -- pending | approved | removed
   created_at timestamptz not null default now(),

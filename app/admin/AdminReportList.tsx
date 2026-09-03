@@ -11,6 +11,8 @@ type Report = {
   scam_type: string[] | null;
   description: string | null;
   admin_summary: string | null;
+  reporter_public_note: string | null;
+  public_note_approved: boolean;
   reporter_name: string | null;
   reporter_email: string | null;
   reporter_phone: string | null;
@@ -45,6 +47,26 @@ function draftFromReport(r: Report): EditDraft {
   };
 }
 
+type AddDraft = {
+  phone_numbers: string;
+  subject_emails: string;
+  subject_first_name: string;
+  scam_type: string[];
+  description: string;
+  admin_summary: string;
+  status: 'approved' | 'pending';
+};
+
+const EMPTY_ADD_DRAFT: AddDraft = {
+  phone_numbers: '',
+  subject_emails: '',
+  subject_first_name: '',
+  scam_type: [],
+  description: '',
+  admin_summary: '',
+  status: 'approved',
+};
+
 export default function AdminReportList({ initialReports }: { initialReports: Report[] }) {
   const [reports, setReports] = useState(initialReports);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('pending');
@@ -55,6 +77,67 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDrafts, setEditDrafts] = useState<Record<string, EditDraft>>({});
   const [editError, setEditError] = useState<Record<string, string>>({});
+  const [showAdd, setShowAdd] = useState(false);
+  const [addDraft, setAddDraft] = useState<AddDraft>(EMPTY_ADD_DRAFT);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addError, setAddError] = useState('');
+
+  function toggleAddCategory(category: string) {
+    setAddDraft((prev) => ({
+      ...prev,
+      scam_type: prev.scam_type.includes(category)
+        ? prev.scam_type.filter((c) => c !== category)
+        : [...prev.scam_type, category],
+    }));
+  }
+
+  async function submitAddReport() {
+    const phone_numbers = addDraft.phone_numbers
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const subject_emails = addDraft.subject_emails
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+
+    if (phone_numbers.length === 0 && subject_emails.length === 0) {
+      setAddError('At least one phone number or email is required.');
+      return;
+    }
+    if (!addDraft.description.trim()) {
+      setAddError('Description is required.');
+      return;
+    }
+
+    setAddError('');
+    setAddBusy(true);
+    try {
+      const res = await fetch('/api/admin/report/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone_numbers,
+          subject_emails,
+          subject_first_name: addDraft.subject_first_name,
+          scam_type: addDraft.scam_type,
+          description: addDraft.description,
+          admin_summary: addDraft.admin_summary,
+          status: addDraft.status,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddError(data.error || 'Failed to add report.');
+        return;
+      }
+      setReports((prev) => [data.report, ...prev]);
+      setAddDraft(EMPTY_ADD_DRAFT);
+      setShowAdd(false);
+    } finally {
+      setAddBusy(false);
+    }
+  }
 
   function startEdit(r: Report) {
     setEditingId(r.id);
@@ -192,6 +275,25 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
     }
   }
 
+  async function togglePublicNote(report: Report) {
+    const next = !report.public_note_approved;
+    setBusyId(report.id);
+    try {
+      const res = await fetch('/api/admin/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: report.id, status: report.status, public_note_approved: next }),
+      });
+      if (res.ok) {
+        setReports((prev) =>
+          prev.map((r) => (r.id === report.id ? { ...r, public_note_approved: next } : r))
+        );
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const byStatus = filter === 'all' ? reports : reports.filter((r) => r.status === filter);
   const searchTerm = search.trim().toLowerCase();
   const visible = searchTerm
@@ -214,11 +316,150 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   return (
     <div>
       <div className="mb-4">
+        <button
+          onClick={() => setShowAdd((v) => !v)}
+          className="rounded-lg border border-[#5aa9e6]/40 bg-[#5aa9e6]/10 px-3 py-1.5 text-xs font-semibold text-[#5aa9e6]"
+        >
+          {showAdd ? 'Cancel' : '+ Add report'}
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="mb-6 space-y-3 rounded-xl border border-[#5aa9e6]/30 bg-card p-6">
+          <p className="text-sm text-muted">
+            Log a report yourself: an incident you know about firsthand, or
+            one you're bringing in from elsewhere. It's saved as approved by
+            default (you're the one reviewing it), so it counts in search
+            results right away; switch it to pending if you'd rather queue
+            it for a second look first.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">Phone number(s), comma separated</span>
+              <input
+                type="text"
+                value={addDraft.phone_numbers}
+                onChange={(e) => setAddDraft((prev) => ({ ...prev, phone_numbers: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">Email(s), comma separated</span>
+              <input
+                type="text"
+                value={addDraft.subject_emails}
+                onChange={(e) => setAddDraft((prev) => ({ ...prev, subject_emails: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+              />
+            </label>
+          </div>
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">Subject first name (optional)</span>
+            <input
+              type="text"
+              value={addDraft.subject_first_name}
+              onChange={(e) => setAddDraft((prev) => ({ ...prev, subject_first_name: e.target.value }))}
+              className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange sm:w-64"
+            />
+          </label>
+          <div>
+            <span className="mb-1.5 block text-xs text-muted">Categories</span>
+            <div className="flex flex-wrap gap-2">
+              {SCAM_TYPES.map((category) => {
+                const active = addDraft.scam_type.includes(category);
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleAddCategory(category)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                      active
+                        ? 'border-[#a78bfa] bg-[#a78bfa]/20 text-[#a78bfa]'
+                        : 'border-border text-muted hover:text-white'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">Description (admin/moderation only, never shown to subscribers)</span>
+            <textarea
+              value={addDraft.description}
+              onChange={(e) => setAddDraft((prev) => ({ ...prev, description: e.target.value }))}
+              rows={4}
+              className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+            />
+          </label>
+          <label className="block text-xs">
+            <span className="mb-1 block text-muted">
+              Public summary (shown to subscribers on search, optional, up to 500 characters)
+            </span>
+            <textarea
+              value={addDraft.admin_summary}
+              onChange={(e) => setAddDraft((prev) => ({ ...prev, admin_summary: e.target.value }))}
+              maxLength={500}
+              rows={2}
+              className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+            />
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted">Status:</span>
+            <button
+              type="button"
+              onClick={() => setAddDraft((prev) => ({ ...prev, status: 'approved' }))}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                addDraft.status === 'approved'
+                  ? 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
+                  : 'border-border text-muted'
+              }`}
+            >
+              Approved
+            </button>
+            <button
+              type="button"
+              onClick={() => setAddDraft((prev) => ({ ...prev, status: 'pending' }))}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                addDraft.status === 'pending'
+                  ? 'border-orange/40 bg-orange/10 text-orange'
+                  : 'border-border text-muted'
+              }`}
+            >
+              Pending
+            </button>
+          </div>
+          {addError && <p className="text-xs text-red">{addError}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setShowAdd(false);
+                setAddDraft(EMPTY_ADD_DRAFT);
+                setAddError('');
+              }}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={addBusy}
+              onClick={submitAddReport}
+              className="rounded-lg bg-[#5aa9e6] px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-50"
+            >
+              Add report
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by phone, email, subject name, or reporter -- this is the full audit trail, no cap"
+          placeholder="Search by phone, email, subject name, or reporter. This is the full audit trail, no cap"
           className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
         />
       </div>
@@ -422,7 +663,7 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
 
             <div className="mt-3 rounded-lg border border-orange/30 bg-orange/5 p-3">
               <label className="mb-1.5 block text-xs font-semibold text-orange">
-                Public summary (shown to subscribers on search -- optional, admin-written only)
+                Public summary (shown to subscribers on search, optional, admin-written only)
               </label>
               <textarea
                 value={summaryDrafts[r.id] ?? r.admin_summary ?? ''}
@@ -450,6 +691,37 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 <p className="mt-1 text-xs text-red">{summaryError[r.id]}</p>
               )}
             </div>
+
+            {r.reporter_public_note && (
+              <div className="mt-3 rounded-lg border border-[#a78bfa]/30 bg-[#a78bfa]/5 p-3">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#a78bfa]">
+                    Reporter's public note (their own words, not yours)
+                  </span>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                      r.public_note_approved
+                        ? 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
+                        : 'border-border text-muted'
+                    }`}
+                  >
+                    {r.public_note_approved ? 'Approved, visible on search' : 'Not approved'}
+                  </span>
+                </div>
+                <p className="rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
+                <button
+                  disabled={busyId === r.id}
+                  onClick={() => togglePublicNote(r)}
+                  className={`mt-2 rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                    r.public_note_approved
+                      ? 'border border-red text-red'
+                      : 'bg-[#a78bfa] text-navy'
+                  }`}
+                >
+                  {r.public_note_approved ? 'Unapprove' : 'Approve to show publicly'}
+                </button>
+              </div>
+            )}
 
             {r.evidence_urls && r.evidence_urls.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">

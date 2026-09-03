@@ -94,6 +94,7 @@ export default function ReportForm() {
   // Multiple categories can apply to one report (e.g. a no-show who also
   // made threats), so this is an array, not a single value.
   const [scamTypes, setScamTypes] = useState<string[]>([]);
+  const [publicNote, setPublicNote] = useState('');
 
   function toggleScamType(t: string) {
     setScamTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -179,6 +180,7 @@ export default function ReportForm() {
     setTrackingCode('');
     setError('');
     setScamTypes([]);
+    setPublicNote('');
     setShowPhone2(false);
     setShowEmail(Boolean(prefillEmail));
     setShowEmail2(false);
@@ -514,6 +516,34 @@ export default function ReportForm() {
               rows={5}
               className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#a78bfa]"
             />
+            <p className="mt-2 text-xs italic text-muted">
+              Admin-only, always. Never shown to subscribers or the public,
+              regardless of whether this report is approved.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm text-muted">
+              Public note (optional, up to 500 characters)
+            </label>
+            <textarea
+              name="reporter_public_note"
+              rows={3}
+              maxLength={500}
+              value={publicNote}
+              onChange={(e) => setPublicNote(e.target.value)}
+              placeholder="A short note in your own words that subscribers could see alongside this report -- e.g. how you were contacted, what they asked for."
+              className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#a78bfa]"
+            />
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-xs italic text-muted">
+                Unlike "What happened" above, this is written to be shown
+                publicly -- but only after an admin reviews and approves it.
+                It's never shown automatically just because the report
+                itself gets approved.
+              </p>
+              <span className="ml-2 shrink-0 text-xs text-muted">{publicNote.length}/500</span>
+            </div>
           </div>
         </div>
       </section>

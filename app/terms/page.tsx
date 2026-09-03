@@ -14,7 +14,7 @@ export default function TermsPage() {
     <main className="min-h-screen px-6 py-20">
       <div className="mx-auto max-w-3xl">
         <h1 className="text-3xl font-extrabold">Terms &amp; Conditions</h1>
-        <p className="mt-2 text-sm text-muted">Last updated: August 26, 2026</p>
+        <p className="mt-2 text-sm text-muted">Last updated: August 31, 2026</p>
 
         <div className="mt-10 space-y-8 text-sm leading-relaxed text-muted">
           <section>
@@ -29,7 +29,23 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">2. Account required</h2>
+            <h2 className="mb-2 text-base font-bold text-white">2. Not a consumer report</h2>
+            <p>
+              ReportRegistry is not a consumer reporting agency and does not
+              produce "consumer reports" as defined by the Fair Credit
+              Reporting Act (FCRA) or similar laws. It does not compile
+              criminal records, credit history, employment history, or
+              government or public records data. You may not use
+              ReportRegistry, or any information obtained from it, to make
+              decisions about a person's eligibility for employment, credit,
+              insurance, housing or tenant screening, or any other purpose
+              that would require FCRA compliance. Doing so is a violation of
+              these Terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="mb-2 text-base font-bold text-white">3. Account required</h2>
             <p>
               You must create a free account to file a report or use the search
               tool. By creating an account, you agree to these Terms and confirm
@@ -38,7 +54,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">3. Reports must be truthful</h2>
+            <h2 className="mb-2 text-base font-bold text-white">4. Reports must be truthful</h2>
             <p>
               You may only submit a report about an incident you personally
               experienced. You agree not to submit a report that you know to be
@@ -48,7 +64,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">4. False reports and law enforcement</h2>
+            <h2 className="mb-2 text-base font-bold text-white">5. False reports and law enforcement</h2>
             <p>
               Knowingly submitting a false report is a violation of these Terms
               and may expose you to civil or criminal liability under applicable
@@ -68,24 +84,28 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">5. What we publish</h2>
+            <h2 className="mb-2 text-base font-bold text-white">6. What we publish</h2>
             <p>
               Reports are reviewed before they affect search results. Search
               results show whether a phone number or email has any approved
               reports on file and, if so, a count of how many reports fall
               into each category (for example, "Flake-No Show" or
               "Threats/Dangerous"). We never publish a reporter's identity,
-              and the reporter's own written description is never shown
-              publicly. For some approved reports, our staff may separately
-              write a short (500 character or fewer) summary and choose to
-              display it alongside the subject's first name; this is
-              admin-authored and admin-approved, not the reporter's raw
-              submission, and only happens when we've chosen to publish it.
+              and the reporter's own written description of what happened
+              is never shown publicly. For some approved reports, a short
+              (500 characters or fewer) note may be shown alongside the
+              subject's first name -- either written by our staff after
+              reviewing the report, or, separately, written by the
+              reporter themselves specifically to be shown publicly. In
+              either case, that note is never displayed until an admin has
+              personally reviewed and approved it for publication; nothing
+              goes public automatically just because the report itself was
+              approved.
             </p>
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">6. Removal requests</h2>
+            <h2 className="mb-2 text-base font-bold text-white">7. Removal requests</h2>
             <p>
               Anyone named in a report, or the person who filed it, may request
               review or removal at{' '}
@@ -99,7 +119,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">7. No warranty</h2>
+            <h2 className="mb-2 text-base font-bold text-white">8. No warranty</h2>
             <p>
               ReportRegistry is provided "as is." A "no scam reports found"
               result is not a guarantee that a person or number is safe to deal
@@ -110,7 +130,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">8. Limitation of liability</h2>
+            <h2 className="mb-2 text-base font-bold text-white">9. Limitation of liability</h2>
             <p>
               To the fullest extent permitted by law, ReportRegistry and its
               operators are not liable for any damages arising from your use of
@@ -120,7 +140,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">9. Changes to these Terms</h2>
+            <h2 className="mb-2 text-base font-bold text-white">10. Changes to these Terms</h2>
             <p>
               We may update these Terms from time to time. Continued use of
               ReportRegistry after a change means you accept the updated Terms.
@@ -128,7 +148,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="mb-2 text-base font-bold text-white">10. Contact</h2>
+            <h2 className="mb-2 text-base font-bold text-white">11. Contact</h2>
             <p>
               Questions about these Terms:{' '}
               <a href="mailto:reportregistry@proton.me" className="text-orange">

@@ -117,7 +117,7 @@ export default function AdminBulkOverride() {
 
       <label className="mt-3 block text-xs">
         <span className="mb-1 block text-muted">
-          Internal notes (why -- e.g. source of these counts. Staff only.)
+          Internal notes (why, e.g. source of these counts. Staff only.)
         </span>
         <textarea
           value={notes}

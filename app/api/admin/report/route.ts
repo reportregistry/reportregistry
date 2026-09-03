@@ -80,6 +80,7 @@ type Body = {
   id?: string;
   status?: string;
   admin_summary?: string | null;
+  public_note_approved?: boolean;
   phone_numbers?: string[];
   subject_emails?: string[];
   subject_first_name?: string | null;
@@ -125,6 +126,14 @@ export async function POST(req: NextRequest) {
   const updates: Record<string, unknown> = { status: body.status };
   if (body.admin_summary !== undefined) {
     updates.admin_summary = trimmedSummary || null;
+  }
+
+  // Approving (or un-approving) the REPORTER'S own public note is a
+  // separate decision from approving the report itself -- a report can be
+  // a real, approved incident while its reporter's specific wording still
+  // stays unpublished if an admin doesn't want to vouch for it verbatim.
+  if (body.public_note_approved !== undefined) {
+    updates.public_note_approved = Boolean(body.public_note_approved);
   }
 
   // Full-detail edits -- same normalization the public report form uses,

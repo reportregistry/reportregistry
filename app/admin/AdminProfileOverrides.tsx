@@ -163,7 +163,7 @@ export default function AdminProfileOverrides() {
 
           <label className="mt-4 block text-xs">
             <span className="mb-1 block text-muted">
-              Internal notes (why this override exists -- staff only, never shown to subscribers)
+              Internal notes (why this override exists; staff only, never shown to subscribers)
             </span>
             <textarea
               value={notes}

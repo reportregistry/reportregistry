@@ -134,7 +134,7 @@ export default function AdminDeepDiveList({ initialRequests }: { initialRequests
                 <div className="mt-3 space-y-3">
                   <div>
                     <label className="mb-1.5 block text-xs text-muted">
-                      Category counts (what your research found -- leave any at 0 that don't apply)
+                      Category counts (what your research found; leave any at 0 that don't apply)
                     </label>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {SCAM_TYPES.map((t) => (

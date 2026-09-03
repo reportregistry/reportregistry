@@ -84,7 +84,7 @@ export default async function AdminPage() {
             Approve a report to make it count as "flagged" in search results.
             Remove a report to take it down entirely. Every field here can be
             edited, and every report ever filed stays visible below (search
-            it by phone, email, subject name, or reporter) -- this is the
+            it by phone, email, subject name, or reporter). This is the
             full audit trail of who filed what and what they wrote, and it's
             admin-only, never shown to subscribers or the public.
           </p>
@@ -100,8 +100,8 @@ export default async function AdminPage() {
             category counts, and optionally add a manual override on top of
             a specific category (e.g. incidents you know about that aren't
             worth filing as separate reports). Overrides add to the real
-            count at search time, they never replace or hide it -- there's
-            still no single "profile" row anywhere else in the app, this is
+            count at search time, they never replace or hide it. There's
+            still no single "profile" row anywhere else in the app; this is
             the one exception.
           </p>
           <div className="mt-6">
