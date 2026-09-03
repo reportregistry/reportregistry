@@ -669,11 +669,12 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                   </p>
                   <p>
                     <span className="text-muted">Reporter: </span>
-                    {isAdminFiled(r)
-                      ? 'Anonymous (filed by admin)'
-                      : [r.reporter_name, r.reporter_email || r.reporter_phone]
-                          .filter(Boolean)
-                          .join(', ') || '—'}
+                    {/* Reporter identity (name/email/phone) is still stored
+                        in the database exactly as before -- nothing here
+                        gets deleted, so it's still there if a valid legal
+                        request under the Terms ever needs it. It's just no
+                        longer displayed in this list by default. */}
+                    Unknown
                   </p>
                 </div>
 
