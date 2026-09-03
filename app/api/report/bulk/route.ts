@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   }
   if (lines.length > MAX_ROWS) {
     return NextResponse.json(
-      { error: `Max ${MAX_ROWS} rows per submission -- split into batches.` },
+      { error: `Max ${MAX_ROWS} rows per submission. Split into batches.` },
       { status: 400 }
     );
   }

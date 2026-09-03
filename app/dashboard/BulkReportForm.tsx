@@ -7,7 +7,7 @@ type Result = { inserted: number; skipped: { line: number; reason: string }[] } 
 const PLACEHOLDER = `Paste your list here, one entry per line, any format, e.g.:
 
 +1 (555) 123-4567, John, asked for gift cards then vanished
-scammer@fake.com - took a deposit and ghosted
+scammer@fake.com, took a deposit and ghosted
 555-987-6543`;
 
 export default function BulkReportForm() {

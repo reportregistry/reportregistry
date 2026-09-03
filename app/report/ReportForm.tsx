@@ -532,13 +532,13 @@ export default function ReportForm() {
               maxLength={500}
               value={publicNote}
               onChange={(e) => setPublicNote(e.target.value)}
-              placeholder="A short note in your own words that subscribers could see alongside this report -- e.g. how you were contacted, what they asked for."
+              placeholder="A short note in your own words that subscribers could see alongside this report, e.g. how you were contacted, what they asked for."
               className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#a78bfa]"
             />
             <div className="mt-1 flex items-center justify-between">
               <p className="text-xs italic text-muted">
                 Unlike "What happened" above, this is written to be shown
-                publicly -- but only after an admin reviews and approves it.
+                publicly, but only after an admin reviews and approves it.
                 It's never shown automatically just because the report
                 itself gets approved.
               </p>

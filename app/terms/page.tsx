@@ -94,7 +94,7 @@ export default function TermsPage() {
               and the reporter's own written description of what happened
               is never shown publicly. For some approved reports, a short
               (500 characters or fewer) note may be shown alongside the
-              subject's first name -- either written by our staff after
+              subject's first name, either written by our staff after
               reviewing the report, or, separately, written by the
               reporter themselves specifically to be shown publicly. In
               either case, that note is never displayed until an admin has

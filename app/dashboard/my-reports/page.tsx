@@ -72,7 +72,7 @@ export default async function MyReportsPage() {
                 </div>
                 <p className="mt-1 text-xs text-muted">
                   Filed {new Date(r.created_at).toLocaleDateString()}
-                  {r.subject_first_name ? ` -- ${r.subject_first_name}` : ''}
+                  {r.subject_first_name ? `, ${r.subject_first_name}` : ''}
                 </p>
               </div>
             ))}

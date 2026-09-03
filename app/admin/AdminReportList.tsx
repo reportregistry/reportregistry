@@ -277,7 +277,11 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   }
 
   async function saveSummary(report: Report) {
-    const draft = summaryDrafts[report.id] ?? report.admin_summary ?? '';
+    const draft =
+      summaryDrafts[report.id] ??
+      report.admin_summary ??
+      extractOtherDetail(report.description) ??
+      '';
     if (draft.length > 500) {
       setSummaryError((prev) => ({ ...prev, [report.id]: 'Must be 500 characters or fewer.' }));
       return;
@@ -754,25 +758,6 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                   </p>
                 )}
 
-                {extractOtherDetail(r.description) && (
-                  <div className="mt-3 rounded-lg border border-orange/30 bg-orange/5 p-3">
-                    <p className="mb-1.5 text-xs font-semibold text-orange">
-                      Reporter's "Other" detail (admin-only until you publish it)
-                    </p>
-                    <p className="text-sm text-white">{extractOtherDetail(r.description)}</p>
-                    <button
-                      onClick={() =>
-                        setSummaryDrafts((prev) => ({
-                          ...prev,
-                          [r.id]: extractOtherDetail(r.description) || '',
-                        }))
-                      }
-                      className="mt-2 rounded-lg border border-orange/40 px-3 py-1.5 text-xs font-semibold text-orange"
-                    >
-                      Use as public summary
-                    </button>
-                  </div>
-                )}
               </>
             )}
 
@@ -780,8 +765,18 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
               <label className="mb-1.5 block text-xs font-semibold text-orange">
                 Public summary (shown to subscribers on search, optional, admin-written only)
               </label>
+              {!r.admin_summary && extractOtherDetail(r.description) && summaryDrafts[r.id] === undefined && (
+                <p className="mb-1.5 text-xs text-muted">
+                  Reporter's "Other" detail, pre-filled below, still admin-only until you save it.
+                </p>
+              )}
               <textarea
-                value={summaryDrafts[r.id] ?? r.admin_summary ?? ''}
+                value={
+                  summaryDrafts[r.id] ??
+                  r.admin_summary ??
+                  extractOtherDetail(r.description) ??
+                  ''
+                }
                 onChange={(e) =>
                   setSummaryDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))
                 }
@@ -792,7 +787,15 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
               />
               <div className="mt-1.5 flex items-center justify-between">
                 <span className="text-xs text-muted">
-                  {(summaryDrafts[r.id] ?? r.admin_summary ?? '').length}/500
+                  {
+                    (
+                      summaryDrafts[r.id] ??
+                      r.admin_summary ??
+                      extractOtherDetail(r.description) ??
+                      ''
+                    ).length
+                  }
+                  /500
                 </span>
                 <button
                   disabled={busyId === r.id}

@@ -23,7 +23,7 @@ export default async function BulkReportPage() {
         <h1 className="text-3xl font-extrabold">Bulk Report</h1>
         <div className="mx-auto mt-10 max-w-md rounded-xl border border-orange bg-orange/10 p-8">
           <p className="text-sm text-muted">
-            Supabase isn't configured yet -- add your Supabase keys to
+            Supabase isn't configured yet. Add your Supabase keys to
             `.env.local` to unlock this page.
           </p>
         </div>

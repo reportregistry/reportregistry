@@ -33,7 +33,7 @@ export default function PrivacyPage() {
               identity or the reporter's own written description of what
               happened. For some approved reports, a short note (500
               characters or fewer) may be published alongside the subject's
-              first name -- either written by our staff, or written by the
+              first name, either written by our staff, or written by the
               reporter themselves specifically to be shown publicly. Either
               way, that note is only published once an admin has personally
               reviewed and approved it; it is never shown just because the

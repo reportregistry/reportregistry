@@ -5,7 +5,7 @@ import { useState } from 'react';
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   pending: { label: 'Pending review', className: 'border-orange/40 bg-orange/10 text-orange' },
   approved: {
-    label: 'Approved -- live in search results',
+    label: 'Approved, live in search results',
     className: 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]',
   },
   removed: { label: 'Removed', className: 'border-red/40 bg-red/10 text-red' },
