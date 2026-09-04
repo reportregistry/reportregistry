@@ -47,6 +47,8 @@ export default function SearchBox({
   const [error, setError] = useState('');
   const [history, setHistory] = useState(initialHistory);
   const [historyPage, setHistoryPage] = useState(0);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
 
   const [watching, setWatching] = useState<boolean | null>(null);
   const [watchBusy, setWatchBusy] = useState(false);
@@ -140,6 +142,20 @@ export default function SearchBox({
       if (res.ok) setWatching((w) => !w);
     } finally {
       setWatchBusy(false);
+    }
+  }
+
+  async function clearHistory() {
+    setClearBusy(true);
+    try {
+      const res = await fetch('/api/search/history', { method: 'DELETE' });
+      if (res.ok) {
+        setHistory([]);
+        setHistoryPage(0);
+      }
+    } finally {
+      setClearBusy(false);
+      setClearConfirm(false);
     }
   }
 
