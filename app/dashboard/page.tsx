@@ -56,19 +56,36 @@ async function getWatches(clerkUserId: string) {
   return data || [];
 }
 
-async function getMyReports(clerkUserId: string) {
+// Powers the "My Reports" tab in DashboardTabs.tsx -- deliberately the
+// SAME query, "New" logic (previousLastSeenAt), and mark-as-read upsert as
+// the standalone /dashboard/my-reports page, so that page and this tab are
+// two doors into one identical list (rendered by the shared
+// MyReportsList component) rather than two views that can drift apart.
+// Visiting either one clears the unread badge in SiteHeader.tsx.
+async function getMyReportsWithInbox(clerkUserId: string) {
   const supabase = getServiceClient();
-  // Small recap shown under the search box (see DashboardTabs.tsx) so a
-  // subscriber doesn't have to leave Search to remember what they've
-  // already filed -- the full, unlimited list still lives at
-  // /dashboard/my-reports.
+
+  const { data: inboxState } = await supabase
+    .from('report_inbox_state')
+    .select('last_seen_at')
+    .eq('clerk_user_id', clerkUserId)
+    .maybeSingle();
+  const previousLastSeenAt = inboxState?.last_seen_at || new Date(0).toISOString();
+
   const { data } = await supabase
     .from('reports')
-    .select('id, phone_numbers, subject_emails, social_handles, status, created_at')
+    .select(
+      'id, phone_numbers, subject_emails, social_handles, subject_first_name, status, resolved_at, created_at, tracking_code'
+    )
     .eq('reporter_clerk_user_id', clerkUserId)
     .order('created_at', { ascending: false })
-    .limit(5);
-  return data || [];
+    .limit(200);
+
+  await supabase
+    .from('report_inbox_state')
+    .upsert({ clerk_user_id: clerkUserId, last_seen_at: new Date().toISOString() });
+
+  return { reports: data || [], previousLastSeenAt };
 }
 
 async function getEnhancedReports(clerkUserId: string) {
@@ -105,14 +122,14 @@ export default async function DashboardPage() {
     ? await getSubscriber(userId)
     : { isActive: false, credits: 0 };
 
-  const [searchHistory, enhancedReports, watches, myReports] = userId && isActive
+  const [searchHistory, enhancedReports, watches, myReportsData] = userId && isActive
     ? await Promise.all([
         getSearchHistory(userId),
         getEnhancedReports(userId),
         getWatches(userId),
-        getMyReports(userId),
+        getMyReportsWithInbox(userId),
       ])
-    : [[], [], [], []];
+    : [[], [], [], { reports: [], previousLastSeenAt: new Date(0).toISOString() }];
 
   return (
     <main className="min-h-screen px-6 py-24 text-center">
@@ -125,7 +142,8 @@ export default async function DashboardPage() {
             initialHistory={searchHistory}
             watches={watches}
             enhancedReports={enhancedReports}
-            myReports={myReports}
+            myReports={myReportsData.reports}
+            myReportsPreviousLastSeenAt={myReportsData.previousLastSeenAt}
           />
           <div className="mt-8">
             <ManageSubscriptionButton />

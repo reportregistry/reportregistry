@@ -1,12 +1,6 @@
-import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
-
-const STATUS_STYLES: Record<string, string> = {
-  pending: 'border-orange/40 bg-orange/10 text-orange',
-  approved: 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]',
-  removed: 'border-red/40 bg-red/10 text-red',
-};
+import { MyReportsList } from './MyReportsList';
 
 // Available to ANY signed-in user, not just active subscribers -- filing
 // a report is free and open to everyone, so checking on what you've
@@ -67,57 +61,7 @@ export default async function MyReportsPage() {
       </p>
 
       <div className="mx-auto mt-10 max-w-lg text-left">
-        {!reports || reports.length === 0 ? (
-          <p className="text-center text-sm text-muted">
-            You haven't filed any reports while signed in yet.{' '}
-            <Link href="/report" className="text-orange underline">
-              File one here
-            </Link>
-            .
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {reports.map((r) => {
-              const isNew =
-                r.status !== 'pending' && r.resolved_at && r.resolved_at > previousLastSeenAt;
-              return (
-                <div
-                  key={r.id}
-                  className={`rounded-xl border p-5 ${
-                    isNew ? 'border-orange bg-orange/5' : 'border-border bg-card'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <Link
-                      href={`/dashboard/my-reports/${r.id}`}
-                      className="min-w-0 break-words text-sm font-semibold text-white underline decoration-dotted hover:text-orange"
-                    >
-                      {[...(r.phone_numbers || []), ...(r.subject_emails || []), ...(r.social_handles || [])].join(
-                        ', '
-                      ) || '—'}
-                      {isNew && (
-                        <span className="ml-2 inline-block rounded-full bg-orange px-2 py-0.5 text-[10px] font-bold uppercase text-navy">
-                          New
-                        </span>
-                      )}
-                    </Link>
-                    <span
-                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
-                        STATUS_STYLES[r.status] || ''
-                      }`}
-                    >
-                      {r.status}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-muted">
-                    Filed {new Date(r.created_at).toLocaleDateString()}
-                    {r.subject_first_name ? `, ${r.subject_first_name}` : ''}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <MyReportsList reports={reports || []} previousLastSeenAt={previousLastSeenAt} />
       </div>
     </main>
   );

@@ -48,9 +48,15 @@ export default async function MyReportDetailPage({ params }: { params: { id: str
 
   return (
     <main className="min-h-screen px-6 py-24 text-center">
-      <Link href="/dashboard/my-reports" className="text-sm text-orange underline">
-        Back to My Reports
-      </Link>
+      <div className="flex items-center justify-center gap-3 text-sm">
+        <Link href="/dashboard/my-reports" className="text-orange underline">
+          Back to My Reports
+        </Link>
+        <span className="text-muted">·</span>
+        <Link href="/dashboard" className="text-orange underline">
+          Go to Search
+        </Link>
+      </div>
       <h1 className="mt-4 text-3xl font-extrabold">Report details</h1>
 
       <div className="mx-auto mt-8 max-w-lg text-left">

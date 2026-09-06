@@ -5,6 +5,7 @@ import Link from 'next/link';
 import SearchBox from './SearchBox';
 import WatchList from './WatchList';
 import EnhancedReportsList from './EnhancedReportsList';
+import { MyReportsList, type MyReportSummary } from './my-reports/MyReportsList';
 
 type HistoryItem = {
   query_type: string;
@@ -30,22 +31,7 @@ type EnhancedReport = {
   resolved_at: string | null;
 };
 
-type MyReport = {
-  id: string;
-  phone_numbers: string[] | null;
-  subject_emails: string[] | null;
-  social_handles: string[] | null;
-  status: string;
-  created_at: string;
-};
-
-const MY_REPORT_STATUS_STYLES: Record<string, string> = {
-  pending: 'border-orange/40 bg-orange/10 text-orange',
-  approved: 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]',
-  removed: 'border-red/40 bg-red/10 text-red',
-};
-
-const TABS = ['search', 'watching', 'enhanced'] as const;
+const TABS = ['search', 'watching', 'enhanced', 'myReports'] as const;
 type Tab = (typeof TABS)[number];
 
 // Splits what used to be one long, stacked dashboard page (search box,
@@ -55,30 +41,46 @@ type Tab = (typeof TABS)[number];
 // layer on top so a subscriber isn't scrolling past all three every time
 // they only want one. Tab state resets on page reload, on purpose;
 // there's no need to persist which tab was open across visits.
+//
+// "My Reports" is the 4th tab here, rendering the exact same
+// MyReportsList component (and the same reports + previousLastSeenAt data,
+// see getMyReportsWithInbox in page.tsx) as the standalone
+// /dashboard/my-reports page -- that page still exists on its own for the
+// "My Reports" nav link and for signed-in users who aren't subscribers
+// (filing is free and doesn't require a subscription), but a subscriber
+// checking search now never has to leave this screen to see what they've
+// filed.
 export default function DashboardTabs({
   initialCredits,
   initialHistory,
   watches,
   enhancedReports,
   myReports,
+  myReportsPreviousLastSeenAt,
 }: {
   initialCredits: number;
   initialHistory: HistoryItem[];
   watches: Watch[];
   enhancedReports: EnhancedReport[];
-  myReports: MyReport[];
+  myReports: MyReportSummary[];
+  myReportsPreviousLastSeenAt: string;
 }) {
   const [tab, setTab] = useState<Tab>('search');
+
+  const newReportCount = myReports.filter(
+    (r) => r.status !== 'pending' && r.resolved_at && r.resolved_at > myReportsPreviousLastSeenAt
+  ).length;
 
   const labels: Record<Tab, string> = {
     search: 'Search',
     watching: `Watching (${watches.length})`,
     enhanced: `Enhanced Reports (${enhancedReports.length})`,
+    myReports: `My Reports (${myReports.length})${newReportCount > 0 ? ` · ${newReportCount} new` : ''}`,
   };
 
   return (
     <div className="mt-10">
-      <div className="mx-auto flex max-w-md justify-center gap-2">
+      <div className="mx-auto flex max-w-md flex-wrap justify-center gap-2">
         {TABS.map((t) => (
           <button
             key={t}
@@ -86,7 +88,9 @@ export default function DashboardTabs({
             className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
               tab === t
                 ? 'border-white bg-white text-navy'
-                : 'border-border text-muted hover:text-white'
+                : t === 'myReports' && newReportCount > 0
+                  ? 'border-orange text-orange'
+                  : 'border-border text-muted hover:text-white'
             }`}
           >
             {labels[t]}
@@ -105,43 +109,6 @@ export default function DashboardTabs({
               </Link>
               .
             </p>
-
-            {myReports.length > 0 && (
-              <div className="mx-auto mt-8 max-w-md text-left">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wide text-muted">
-                    Recently filed by you
-                  </h3>
-                  <Link href="/dashboard/my-reports" className="text-xs text-orange underline">
-                    View all
-                  </Link>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {myReports.map((r) => (
-                    <Link
-                      key={r.id}
-                      href={`/dashboard/my-reports/${r.id}`}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-white/30"
-                    >
-                      <span className="min-w-0 break-words">
-                        {[
-                          ...(r.phone_numbers || []),
-                          ...(r.subject_emails || []),
-                          ...(r.social_handles || []),
-                        ].join(', ') || '—'}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${
-                          MY_REPORT_STATUS_STYLES[r.status] || ''
-                        }`}
-                      >
-                        {r.status}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -154,6 +121,17 @@ export default function DashboardTabs({
         {tab === 'enhanced' && (
           <div className="mx-auto max-w-md text-left">
             <EnhancedReportsList reports={enhancedReports} />
+          </div>
+        )}
+
+        {tab === 'myReports' && (
+          <div className="mx-auto max-w-md text-left">
+            <MyReportsList reports={myReports} previousLastSeenAt={myReportsPreviousLastSeenAt} />
+            <p className="mt-4 text-center text-xs text-muted">
+              <Link href="/report" className="text-orange underline">
+                File another report
+              </Link>
+            </p>
           </div>
         )}
       </div>
