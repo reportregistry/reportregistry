@@ -30,6 +30,21 @@ type EnhancedReport = {
   resolved_at: string | null;
 };
 
+type MyReport = {
+  id: string;
+  phone_numbers: string[] | null;
+  subject_emails: string[] | null;
+  social_handles: string[] | null;
+  status: string;
+  created_at: string;
+};
+
+const MY_REPORT_STATUS_STYLES: Record<string, string> = {
+  pending: 'border-orange/40 bg-orange/10 text-orange',
+  approved: 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]',
+  removed: 'border-red/40 bg-red/10 text-red',
+};
+
 const TABS = ['search', 'watching', 'enhanced'] as const;
 type Tab = (typeof TABS)[number];
 
@@ -45,11 +60,13 @@ export default function DashboardTabs({
   initialHistory,
   watches,
   enhancedReports,
+  myReports,
 }: {
   initialCredits: number;
   initialHistory: HistoryItem[];
   watches: Watch[];
   enhancedReports: EnhancedReport[];
+  myReports: MyReport[];
 }) {
   const [tab, setTab] = useState<Tab>('search');
 
@@ -88,6 +105,43 @@ export default function DashboardTabs({
               </Link>
               .
             </p>
+
+            {myReports.length > 0 && (
+              <div className="mx-auto mt-8 max-w-md text-left">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-muted">
+                    Recently filed by you
+                  </h3>
+                  <Link href="/dashboard/my-reports" className="text-xs text-orange underline">
+                    View all
+                  </Link>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {myReports.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={`/dashboard/my-reports/${r.id}`}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-white/30"
+                    >
+                      <span className="min-w-0 break-words">
+                        {[
+                          ...(r.phone_numbers || []),
+                          ...(r.subject_emails || []),
+                          ...(r.social_handles || []),
+                        ].join(', ') || '—'}
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${
+                          MY_REPORT_STATUS_STYLES[r.status] || ''
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 

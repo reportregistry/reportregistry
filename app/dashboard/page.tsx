@@ -56,6 +56,21 @@ async function getWatches(clerkUserId: string) {
   return data || [];
 }
 
+async function getMyReports(clerkUserId: string) {
+  const supabase = getServiceClient();
+  // Small recap shown under the search box (see DashboardTabs.tsx) so a
+  // subscriber doesn't have to leave Search to remember what they've
+  // already filed -- the full, unlimited list still lives at
+  // /dashboard/my-reports.
+  const { data } = await supabase
+    .from('reports')
+    .select('id, phone_numbers, subject_emails, social_handles, status, created_at')
+    .eq('reporter_clerk_user_id', clerkUserId)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  return data || [];
+}
+
 async function getEnhancedReports(clerkUserId: string) {
   const supabase = getServiceClient();
   const { data } = await supabase
@@ -90,9 +105,14 @@ export default async function DashboardPage() {
     ? await getSubscriber(userId)
     : { isActive: false, credits: 0 };
 
-  const [searchHistory, enhancedReports, watches] = userId && isActive
-    ? await Promise.all([getSearchHistory(userId), getEnhancedReports(userId), getWatches(userId)])
-    : [[], [], []];
+  const [searchHistory, enhancedReports, watches, myReports] = userId && isActive
+    ? await Promise.all([
+        getSearchHistory(userId),
+        getEnhancedReports(userId),
+        getWatches(userId),
+        getMyReports(userId),
+      ])
+    : [[], [], [], []];
 
   return (
     <main className="min-h-screen px-6 py-24 text-center">
@@ -105,6 +125,7 @@ export default async function DashboardPage() {
             initialHistory={searchHistory}
             watches={watches}
             enhancedReports={enhancedReports}
+            myReports={myReports}
           />
           <div className="mt-8">
             <ManageSubscriptionButton />
