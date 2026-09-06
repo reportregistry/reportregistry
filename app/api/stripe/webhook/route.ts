@@ -62,15 +62,6 @@ export async function POST(req: NextRequest) {
         },
         { onConflict: 'clerk_user_id' }
       );
-
-      // Referral code use only counts here, on an actually-completed
-      // checkout -- not when checkout/route.ts merely validates it before
-      // creating the session. Best-effort: a failure here shouldn't block
-      // the subscription itself from activating.
-      const referralCode = session.metadata?.referral_code;
-      if (referralCode) {
-        await supabase.rpc('increment_referral_code_use', { p_code: referralCode });
-      }
       break;
     }
 

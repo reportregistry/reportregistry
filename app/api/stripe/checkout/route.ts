@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { stripe } from '@/lib/stripe';
-import { getServiceClient } from '@/lib/supabase';
 
 // Three things can be bought here:
 //  - "monthly" / "annual": the recurring subscription that unlocks search
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
   }
 
-  let body: { plan?: string; referral_code?: string } = {};
+  let body: { plan?: string } = {};
   try {
     body = await req.json();
   } catch {
@@ -37,35 +36,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Referral-code gate: only applies to actually subscribing (monthly /
-  // annual), not the one-time credits pack -- if you're already an active
-  // subscriber buying more credits, you already passed this gate once.
-  // This is an app-level access control, separate from Stripe's own
-  // allow_promotion_codes below (that's a discount, this is a yes/no gate
-  // that Stripe never sees). See referral_codes in supabase/schema.sql.
-  const referralCode = (body.referral_code || '').trim().toUpperCase();
-  if (plan !== 'credits') {
-    if (!referralCode) {
-      return NextResponse.json(
-        { error: 'A referral code is required to subscribe.' },
-        { status: 400 }
-      );
-    }
-    const supabase = getServiceClient();
-    const { data: code } = await supabase
-      .from('referral_codes')
-      .select('code, active, max_uses, uses_count')
-      .eq('code', referralCode)
-      .maybeSingle();
-
-    if (!code || !code.active || (code.max_uses !== null && code.uses_count >= code.max_uses)) {
-      return NextResponse.json(
-        { error: "That referral code isn't valid or has already been fully used." },
-        { status: 400 }
-      );
-    }
-  }
-
   const user = await currentUser();
   const email = user?.emailAddresses?.[0]?.emailAddress;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
@@ -79,7 +49,7 @@ export async function POST(req: NextRequest) {
       allow_promotion_codes: true,
       success_url: `${baseUrl}/dashboard?${plan === 'credits' ? 'credits=1' : 'subscribed=1'}`,
       cancel_url: `${baseUrl}/dashboard`,
-      metadata: { clerk_user_id: userId, plan, referral_code: referralCode },
+      metadata: { clerk_user_id: userId, plan },
       ...(plan !== 'credits' && {
         subscription_data: { metadata: { clerk_user_id: userId, plan } },
       }),

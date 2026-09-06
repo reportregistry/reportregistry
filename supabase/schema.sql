@@ -207,34 +207,6 @@ create table if not exists report_inbox_state (
   last_seen_at timestamptz not null default now()
 );
 
--- Referral/invite codes: subscribing (monthly or annual) requires a valid
--- code, checked server-side in app/api/stripe/checkout/route.ts before a
--- Stripe Checkout session is even created. This is an app-level access
--- gate, separate from Stripe's own "Promotion Codes" (allow_promotion_codes
--- on the checkout session, still enabled) which just apply a discount --
--- a promo code doesn't get you past this gate, and this code doesn't
--- discount anything. uses_count only increments once a checkout actually
--- completes (see the webhook), not just when someone starts checkout, so
--- an abandoned attempt doesn't burn a limited-use code. max_uses null
--- means unlimited.
-create table if not exists referral_codes (
-  code text primary key,
-  active boolean not null default true,
-  max_uses integer,
-  uses_count integer not null default 0,
-  note text,
-  created_at timestamptz not null default now()
-);
-
-create or replace function increment_referral_code_use(p_code text)
-returns void
-language sql
-as $$
-  update referral_codes
-  set uses_count = uses_count + 1
-  where code = p_code;
-$$;
-
 -- Profile overrides: an admin-only manual adjustment to the category
 -- counts shown for a specific phone number or email, ON TOP OF whatever
 -- real approved reports already say. There is no separate "profile"

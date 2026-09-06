@@ -67,6 +67,7 @@ export default async function AdminPage() {
     .order('created_at', { ascending: false })
     .limit(500);
 
+
   return (
     <main className="min-h-screen px-6 py-16">
       <div className="mx-auto max-w-4xl">
