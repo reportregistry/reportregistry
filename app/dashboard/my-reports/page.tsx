@@ -45,7 +45,9 @@ export default async function MyReportsPage() {
 
   const { data: reports } = await supabase
     .from('reports')
-    .select('id, phone_numbers, subject_emails, subject_first_name, status, resolved_at, created_at, tracking_code')
+    .select(
+      'id, phone_numbers, subject_emails, social_handles, subject_first_name, status, resolved_at, created_at, tracking_code'
+    )
     .eq('reporter_clerk_user_id', userId)
     .order('created_at', { ascending: false })
     .limit(200);
@@ -86,14 +88,19 @@ export default async function MyReportsPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 break-words text-sm font-semibold">
-                      {[...(r.phone_numbers || []), ...(r.subject_emails || [])].join(', ') || '—'}
+                    <Link
+                      href={`/dashboard/my-reports/${r.id}`}
+                      className="min-w-0 break-words text-sm font-semibold text-white underline decoration-dotted hover:text-orange"
+                    >
+                      {[...(r.phone_numbers || []), ...(r.subject_emails || []), ...(r.social_handles || [])].join(
+                        ', '
+                      ) || '—'}
                       {isNew && (
                         <span className="ml-2 inline-block rounded-full bg-orange px-2 py-0.5 text-[10px] font-bold uppercase text-navy">
                           New
                         </span>
                       )}
-                    </span>
+                    </Link>
                     <span
                       className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
                         STATUS_STYLES[r.status] || ''
