@@ -347,9 +347,18 @@ export default function ReportForm() {
 
           {showPhone2 && (
             <div>
-              <label className="mb-2 block text-sm text-muted">
-                Second phone number
-              </label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm text-muted">
+                  Second phone number
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowPhone2(false)}
+                  className="text-xs text-muted underline hover:text-white"
+                >
+                  Remove
+                </button>
+              </div>
               <div className="flex gap-2">
                 <div className="relative w-28 shrink-0">
                   <select
@@ -377,7 +386,19 @@ export default function ReportForm() {
 
           {showEmail && (
             <div>
-              <label className="mb-2 block text-sm text-muted">Email</label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm text-muted">Email</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmail(false);
+                    setShowEmail2(false);
+                  }}
+                  className="text-xs text-muted underline hover:text-white"
+                >
+                  Remove
+                </button>
+              </div>
               <input
                 name="subject_email"
                 type="email"
@@ -389,9 +410,18 @@ export default function ReportForm() {
 
           {showEmail2 && (
             <div>
-              <label className="mb-2 block text-sm text-muted">
-                Second email
-              </label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm text-muted">
+                  Second email
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowEmail2(false)}
+                  className="text-xs text-muted underline hover:text-white"
+                >
+                  Remove
+                </button>
+              </div>
               <input
                 name="subject_email_2"
                 type="email"
@@ -402,9 +432,18 @@ export default function ReportForm() {
 
           {showSocial && (
             <div>
-              <label className="mb-2 block text-sm text-muted">
-                Social tag/username
-              </label>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-sm text-muted">
+                  Social tag/username
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowSocial(false)}
+                  className="text-xs text-muted underline hover:text-white"
+                >
+                  Remove
+                </button>
+              </div>
               <input
                 name="subject_social"
                 type="text"
