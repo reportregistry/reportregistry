@@ -120,6 +120,9 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
   const [alertBusy, setAlertBusy] = useState<string | null>(null);
   const [alertError, setAlertError] = useState<Record<string, string>>({});
   const [alertSentCount, setAlertSentCount] = useState<Record<string, number>>({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<Record<string, string>>({});
   const [addError, setAddError] = useState('');
 
   function toggleAddCategory(category: string) {
@@ -404,6 +407,27 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
     }
   }
 
+  async function deleteReportForever(report: Report) {
+    setDeleteError((prev) => ({ ...prev, [report.id]: '' }));
+    setDeleteBusy(report.id);
+    try {
+      const res = await fetch('/api/admin/report/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: report.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDeleteError((prev) => ({ ...prev, [report.id]: data.error || 'Failed to delete.' }));
+        return;
+      }
+      setReports((prev) => prev.filter((r) => r.id !== report.id));
+      setDeleteConfirmId(null);
+    } finally {
+      setDeleteBusy(null);
+    }
+  }
+
   async function sendRedAlert(report: Report) {
     const message = (alertDrafts[report.id] ?? report.alert_message ?? '').trim();
     if (!message) {
@@ -684,6 +708,31 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                     Reset to pending
                   </button>
                 )}
+                {r.status === 'removed' &&
+                  (deleteConfirmId === r.id ? (
+                    <>
+                      <button
+                        onClick={() => setDeleteConfirmId(null)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        disabled={deleteBusy === r.id}
+                        onClick={() => deleteReportForever(r)}
+                        className="rounded-lg bg-red px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {deleteBusy === r.id ? 'Deleting...' : 'Confirm, delete forever'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setDeleteConfirmId(r.id)}
+                      className="rounded-lg bg-red/10 px-3 py-1.5 text-xs font-semibold text-red hover:bg-red/20"
+                    >
+                      Delete permanently
+                    </button>
+                  ))}
                 {editingId === r.id ? (
                   <button
                     onClick={() => cancelEdit(r.id)}
@@ -844,6 +893,10 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 )}
 
               </>
+            )}
+
+            {deleteError[r.id] && (
+              <p className="mt-2 text-xs text-red">{deleteError[r.id]}</p>
             )}
 
             <div className="mt-3 rounded-lg border border-orange/30 bg-orange/5 p-3">
