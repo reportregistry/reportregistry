@@ -48,12 +48,17 @@ export default async function SiteHeader() {
           ReportRegistry
         </Link>
         <nav className="flex items-center gap-2 text-sm sm:gap-3">
-          <Link
+          {/* Plain <a>, not Link -- if you're already on /report (e.g. on
+              the post-submit "Thanks" screen), a client-side Link to the
+              same URL does nothing, since Next.js sees you're already
+              there and skips re-rendering. A real navigation always
+              reloads the page and gives you a fresh form. */}
+          <a
             href="/report"
             className="hidden whitespace-nowrap px-2 py-1.5 text-muted transition hover:text-white sm:inline"
           >
             Report Free
-          </Link>
+          </a>
           <SignedOut>
             <Link
               href="/sign-in"

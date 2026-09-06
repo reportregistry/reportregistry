@@ -49,6 +49,7 @@ export default function SearchBox({
   const [historyPage, setHistoryPage] = useState(0);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const [watching, setWatching] = useState<boolean | null>(null);
   const [watchBusy, setWatchBusy] = useState(false);
@@ -73,6 +74,7 @@ export default function SearchBox({
     setWatching(null);
     setDeepDiveState('idle');
     setDeepDiveError('');
+    setExpandedCategory(null);
     try {
       const { isEmail, phone, email } = parseQuery(raw);
       const param = isEmail
@@ -222,19 +224,23 @@ export default function SearchBox({
         </div>
       )}
 
-      {result && (
-        <div
-          className={`mt-4 rounded-lg border p-4 text-center font-semibold ${
-            result.isScam
-              ? 'border-red bg-red/10 text-red'
-              : 'border-green-500 bg-green-500/10 text-green-400'
-          }`}
-        >
-          {result.isScam
-            ? `⚠️ ${result.totalReports} report${result.totalReports === 1 ? '' : 's'} on file for this contact.`
-            : '✅ No scam reports found for this contact.'}
-        </div>
-      )}
+      {result &&
+        (result.isScam ? (
+          <button
+            onClick={() => setExpandedCategory((c) => (c === '__ALL__' ? null : '__ALL__'))}
+            className="mt-4 w-full rounded-lg border border-red bg-red/10 p-4 text-center font-semibold text-red transition hover:bg-red/20"
+          >
+            ⚠️ {result.totalReports} report{result.totalReports === 1 ? '' : 's'} on file for
+            this contact.{' '}
+            <span className="underline">
+              {expandedCategory === '__ALL__' ? 'Hide details' : 'See details'}
+            </span>
+          </button>
+        ) : (
+          <div className="mt-4 rounded-lg border border-green-500 bg-green-500/10 p-4 text-center font-semibold text-green-400">
+            ✅ No scam reports found for this contact.
+          </div>
+        ))}
 
       {result && watching !== null && (
         <button
@@ -259,20 +265,72 @@ export default function SearchBox({
             return (
               <div key={category} className="flex items-center justify-between">
                 <span className="text-muted">{category}</span>
-                <span className={`font-semibold ${countColorClass(count)}`}>{count}</span>
+                {count > 0 ? (
+                  <button
+                    onClick={() => setExpandedCategory((c) => (c === category ? null : category))}
+                    className={`font-semibold underline decoration-dotted ${countColorClass(count)}`}
+                  >
+                    {count}
+                  </button>
+                ) : (
+                  <span className={`font-semibold ${countColorClass(count)}`}>{count}</span>
+                )}
               </div>
             );
           })}
           {result.categoryCounts['Unspecified'] > 0 && (
             <div className="flex items-center justify-between border-t border-border pt-1.5">
               <span className="text-muted">Uncategorized</span>
-              <span className={`font-semibold ${countColorClass(result.categoryCounts['Unspecified'])}`}>
+              <button
+                onClick={() => setExpandedCategory((c) => (c === 'Unspecified' ? null : 'Unspecified'))}
+                className={`font-semibold underline decoration-dotted ${countColorClass(result.categoryCounts['Unspecified'])}`}
+              >
                 {result.categoryCounts['Unspecified']}
-              </span>
+              </button>
             </div>
           )}
         </div>
       )}
+
+      {result && expandedCategory && (() => {
+        const matches =
+          expandedCategory === '__ALL__'
+            ? result.snippets
+            : result.snippets.filter((s) => s.categories.includes(expandedCategory));
+        return (
+          <div className="mt-3 rounded-lg border border-border bg-card p-3 text-left text-sm">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+              {expandedCategory === '__ALL__'
+                ? 'All published details for this contact'
+                : `Published details: ${expandedCategory}`}
+            </p>
+            {matches.length > 0 ? (
+              <div className="space-y-2">
+                {matches.map((s, i) => (
+                  <div key={i} className="rounded-lg bg-navy p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-semibold">{s.firstName}</span>
+                      <span className="text-xs text-muted">
+                        {new Date(s.reportedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {s.categories.length > 0 && (
+                      <p className="mt-1 text-xs text-orange">{s.categories.join(', ')}</p>
+                    )}
+                    <p className="mt-1.5 text-muted">{s.summary}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted">
+                No admin-written summary or approved reporter note is published for this
+                category yet. The count reflects a real filed report, but no additional public
+                detail is available beyond it.
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {result && !result.isScam && deepDiveState !== 'done' && (
         <div className="mt-3 rounded-lg border border-border bg-card p-4 text-center text-sm">
@@ -318,24 +376,6 @@ export default function SearchBox({
         </div>
       )}
 
-      {result && result.snippets.length > 0 && (
-        <div className="mt-3 space-y-2">
-          {result.snippets.map((s, i) => (
-            <div key={i} className="rounded-lg border border-border bg-card p-3 text-left text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-1">
-                <span className="font-semibold">{s.firstName}</span>
-                <span className="text-xs text-muted">
-                  {new Date(s.reportedAt).toLocaleDateString()}
-                </span>
-              </div>
-              {s.categories.length > 0 && (
-                <p className="mt-1 text-xs text-orange">{s.categories.join(', ')}</p>
-              )}
-              <p className="mt-1.5 text-muted">{s.summary}</p>
-            </div>
-          ))}
-        </div>
-      )}
 
       {history.length > 0 && (
         <div className="mt-6 border-t border-border pt-4 text-left">
@@ -343,11 +383,38 @@ export default function SearchBox({
             <h2 className="text-xs font-bold uppercase tracking-wide text-muted">
               Recent searches ({history.length})
             </h2>
-            {totalHistoryPages > 1 && (
-              <span className="text-xs text-muted">
-                Page {historyPage + 1} of {totalHistoryPages}
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {totalHistoryPages > 1 && (
+                <span className="text-xs text-muted">
+                  Page {historyPage + 1} of {totalHistoryPages}
+                </span>
+              )}
+              {clearConfirm ? (
+                <span className="flex items-center gap-2 text-xs">
+                  <span className="text-muted">Clear all?</span>
+                  <button
+                    onClick={() => setClearConfirm(false)}
+                    className="text-muted underline hover:text-white"
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={clearHistory}
+                    disabled={clearBusy}
+                    className="font-semibold text-red underline disabled:opacity-50"
+                  >
+                    {clearBusy ? 'Clearing...' : 'Yes, clear'}
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setClearConfirm(true)}
+                  className="text-xs text-muted underline hover:text-white"
+                >
+                  Clear history
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             {visibleHistory.map((h, i) => {
