@@ -33,6 +33,14 @@ create table if not exists reports (
   id uuid primary key default gen_random_uuid(),
   phone_numbers text[] default '{}',
   subject_emails text[] default '{}',
+  -- Third identifier type alongside phone/email -- a social media
+  -- handle/username (e.g. "@someuser" on Instagram/Venmo/whatever
+  -- platform). Same array shape as phone_numbers/subject_emails for
+  -- consistency, though the report form only collects one today. NOT
+  -- currently searchable (search/route.ts still only takes phone or
+  -- email) -- this is collected for the admin record and shown on the
+  -- report card, not yet a third search input.
+  social_handles text[] default '{}',
   subject_first_name text,
   scam_type text[] default '{}', -- any of: Scammer/Spam Caller | Fake Email/Link | Flake-No Show | Threats/Dangerous | Fake Payment | Other
   description text not null,
@@ -76,6 +84,7 @@ create table if not exists reports (
   constraint reports_has_identifier check (
     coalesce(array_length(phone_numbers, 1), 0) > 0
     or coalesce(array_length(subject_emails, 1), 0) > 0
+    or coalesce(array_length(social_handles, 1), 0) > 0
   )
 );
 

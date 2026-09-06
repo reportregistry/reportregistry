@@ -103,6 +103,7 @@ export default function ReportForm() {
   const [showPhone2, setShowPhone2] = useState(false);
   const [showEmail, setShowEmail] = useState(Boolean(prefillEmail));
   const [showEmail2, setShowEmail2] = useState(false);
+  const [showSocial, setShowSocial] = useState(false);
 
   const [phoneCode, setPhoneCode] = useState('+1');
   const [phone2Code, setPhone2Code] = useState('+1');
@@ -128,6 +129,7 @@ export default function ReportForm() {
 
     const email = (formData.get('subject_email') as string)?.trim();
     const email2 = (formData.get('subject_email_2') as string)?.trim();
+    const social = (formData.get('subject_social') as string)?.trim();
 
     // scamTypes is plain React state, not a real form field (the category
     // picker below is buttons, not checkboxes), so it has to be added to
@@ -135,8 +137,10 @@ export default function ReportForm() {
     formData.delete('scam_type');
     scamTypes.forEach((t) => formData.append('scam_type', t));
 
-    if (!phone && !phone2 && !email && !email2) {
-      setError("Provide at least one phone number or email for the person you're reporting.");
+    if (!phone && !phone2 && !email && !email2 && !social) {
+      setError(
+        "Provide at least one phone number, email, or social tag/username for the person you're reporting."
+      );
       return;
     }
 
@@ -184,6 +188,7 @@ export default function ReportForm() {
     setShowPhone2(false);
     setShowEmail(Boolean(prefillEmail));
     setShowEmail2(false);
+    setShowSocial(false);
     setPhoneCode('+1');
     setPhone2Code('+1');
   }
@@ -395,6 +400,20 @@ export default function ReportForm() {
             </div>
           )}
 
+          {showSocial && (
+            <div>
+              <label className="mb-2 block text-sm text-muted">
+                Social tag/username
+              </label>
+              <input
+                name="subject_social"
+                type="text"
+                placeholder="e.g. @someuser, or platform + handle"
+                className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#5aa9e6]"
+              />
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-2">
             {!showPhone2 && (
               <button
@@ -423,9 +442,18 @@ export default function ReportForm() {
                 + Second email
               </button>
             )}
+            {!showSocial && (
+              <button
+                type="button"
+                onClick={() => setShowSocial(true)}
+                className="rounded-full border border-[#5aa9e6]/40 px-3 py-1 text-xs font-medium text-[#5aa9e6] transition hover:bg-[#5aa9e6]/10"
+              >
+                + Social tag/username
+              </button>
+            )}
           </div>
           <p className="text-xs italic text-muted">
-            At least one phone number or email above is required.
+            At least one phone number, email, or social tag/username above is required.
           </p>
 
           <div>

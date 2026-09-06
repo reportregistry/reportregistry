@@ -7,6 +7,7 @@ type Report = {
   id: string;
   phone_numbers: string[] | null;
   subject_emails: string[] | null;
+  social_handles: string[] | null;
   subject_first_name: string | null;
   scam_type: string[] | null;
   description: string | null;
@@ -34,6 +35,7 @@ const FILTERS = ['pending', 'approved', 'removed', 'all'] as const;
 type EditDraft = {
   phone_numbers: string;
   subject_emails: string;
+  social_handles: string;
   subject_first_name: string;
   scam_type: string[];
   description: string;
@@ -68,6 +70,7 @@ function draftFromReport(r: Report): EditDraft {
   return {
     phone_numbers: (r.phone_numbers || []).join(', '),
     subject_emails: (r.subject_emails || []).join(', '),
+    social_handles: (r.social_handles || []).join(', '),
     subject_first_name: r.subject_first_name || '',
     scam_type: r.scam_type || [],
     description: r.description || '',
@@ -77,6 +80,7 @@ function draftFromReport(r: Report): EditDraft {
 type AddDraft = {
   phone_numbers: string;
   subject_emails: string;
+  social_handles: string;
   subject_first_name: string;
   scam_type: string[];
   description: string;
@@ -87,6 +91,7 @@ type AddDraft = {
 const EMPTY_ADD_DRAFT: AddDraft = {
   phone_numbers: '',
   subject_emails: '',
+  social_handles: '',
   subject_first_name: '',
   scam_type: [],
   description: '',
@@ -135,9 +140,13 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
       .split(',')
       .map((e) => e.trim())
       .filter(Boolean);
+    const social_handles = addDraft.social_handles
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-    if (phone_numbers.length === 0 && subject_emails.length === 0) {
-      setAddError('At least one phone number or email is required.');
+    if (phone_numbers.length === 0 && subject_emails.length === 0 && social_handles.length === 0) {
+      setAddError('At least one phone number, email, or social tag is required.');
       return;
     }
     if (!addDraft.description.trim()) {
@@ -154,6 +163,7 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
         body: JSON.stringify({
           phone_numbers,
           subject_emails,
+          social_handles,
           subject_first_name: addDraft.subject_first_name,
           scam_type: addDraft.scam_type,
           description: addDraft.description,
@@ -212,9 +222,16 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
       .split(',')
       .map((e) => e.trim())
       .filter(Boolean);
+    const social_handles = draft.social_handles
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-    if (phone_numbers.length === 0 && subject_emails.length === 0) {
-      setEditError((prev) => ({ ...prev, [report.id]: 'At least one phone number or email is required.' }));
+    if (phone_numbers.length === 0 && subject_emails.length === 0 && social_handles.length === 0) {
+      setEditError((prev) => ({
+        ...prev,
+        [report.id]: 'At least one phone number, email, or social tag is required.',
+      }));
       return;
     }
     if (!draft.description.trim()) {
@@ -233,6 +250,7 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
           status: report.status,
           phone_numbers,
           subject_emails,
+          social_handles,
           subject_first_name: draft.subject_first_name,
           scam_type: draft.scam_type,
           description: draft.description,
@@ -426,6 +444,7 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
         const haystack = [
           ...(r.phone_numbers || []),
           ...(r.subject_emails || []),
+          ...(r.social_handles || []),
           r.subject_first_name,
           r.reporter_name,
           r.reporter_email,
@@ -503,6 +522,15 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 type="text"
                 value={addDraft.subject_emails}
                 onChange={(e) => setAddDraft((prev) => ({ ...prev, subject_emails: e.target.value }))}
+                className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="mb-1 block text-muted">Social tag(s), comma separated</span>
+              <input
+                type="text"
+                value={addDraft.social_handles}
+                onChange={(e) => setAddDraft((prev) => ({ ...prev, social_handles: e.target.value }))}
                 className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm outline-none focus:border-orange"
               />
             </label>
@@ -695,6 +723,15 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                       className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-orange"
                     />
                   </label>
+                  <label className="block text-xs">
+                    <span className="mb-1 block text-muted">Social tag(s), comma separated</span>
+                    <input
+                      type="text"
+                      value={editDrafts[r.id]?.social_handles ?? ''}
+                      onChange={(e) => updateDraft(r.id, { social_handles: e.target.value })}
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-orange"
+                    />
+                  </label>
                 </div>
                 <label className="block text-xs">
                   <span className="mb-1 block text-muted">Subject first name</span>
@@ -769,6 +806,14 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                     <span className="text-muted">Email(s): </span>
                     {r.subject_emails?.length
                       ? r.subject_emails.join(', ')
+                      : isAdminFiled(r)
+                        ? 'Unknown'
+                        : '—'}
+                  </p>
+                  <p>
+                    <span className="text-muted">Social handle(s): </span>
+                    {r.social_handles?.length
+                      ? r.social_handles.join(', ')
                       : isAdminFiled(r)
                         ? 'Unknown'
                         : '—'}

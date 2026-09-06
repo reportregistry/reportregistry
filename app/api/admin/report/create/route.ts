@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   let body: {
     phone_numbers?: string[];
     subject_emails?: string[];
+    social_handles?: string[];
     subject_first_name?: string | null;
     scam_type?: string[];
     description?: string;
@@ -53,10 +54,17 @@ export async function POST(req: NextRequest) {
         .filter((e): e is string => Boolean(e))
     )
   );
+  const social_handles = Array.from(
+    new Set(
+      (body.social_handles || [])
+        .map((s) => (s || '').trim())
+        .filter((s): s is string => Boolean(s))
+    )
+  );
 
-  if (phone_numbers.length === 0 && subject_emails.length === 0) {
+  if (phone_numbers.length === 0 && subject_emails.length === 0 && social_handles.length === 0) {
     return NextResponse.json(
-      { error: 'At least one phone number or email is required.' },
+      { error: 'At least one phone number, email, or social tag is required.' },
       { status: 400 }
     );
   }
@@ -86,6 +94,7 @@ export async function POST(req: NextRequest) {
     .insert({
       phone_numbers,
       subject_emails,
+      social_handles,
       subject_first_name,
       scam_type,
       description,

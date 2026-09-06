@@ -85,17 +85,17 @@ export default async function MyReportsPage() {
                     isNew ? 'border-orange bg-orange/5' : 'border-border bg-card'
                   }`}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-sm font-semibold">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 break-words text-sm font-semibold">
                       {[...(r.phone_numbers || []), ...(r.subject_emails || [])].join(', ') || '—'}
                       {isNew && (
-                        <span className="ml-2 rounded-full bg-orange px-2 py-0.5 text-[10px] font-bold uppercase text-navy">
+                        <span className="ml-2 inline-block rounded-full bg-orange px-2 py-0.5 text-[10px] font-bold uppercase text-navy">
                           New
                         </span>
                       )}
                     </span>
                     <span
-                      className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
+                      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${
                         STATUS_STYLES[r.status] || ''
                       }`}
                     >

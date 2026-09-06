@@ -84,6 +84,7 @@ type Body = {
   public_note_approved?: boolean;
   phone_numbers?: string[];
   subject_emails?: string[];
+  social_handles?: string[];
   subject_first_name?: string | null;
   scam_type?: string[];
   description?: string;
@@ -177,14 +178,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (body.social_handles !== undefined) {
+    if (!Array.isArray(body.social_handles)) {
+      return NextResponse.json({ error: 'social_handles must be an array.' }, { status: 400 });
+    }
+    updates.social_handles = Array.from(
+      new Set(body.social_handles.map((s) => (s || '').trim()).filter((s): s is string => Boolean(s)))
+    );
+  }
+
   if (
     updates.phone_numbers !== undefined &&
     updates.subject_emails !== undefined &&
+    updates.social_handles !== undefined &&
     (updates.phone_numbers as string[]).length === 0 &&
-    (updates.subject_emails as string[]).length === 0
+    (updates.subject_emails as string[]).length === 0 &&
+    (updates.social_handles as string[]).length === 0
   ) {
     return NextResponse.json(
-      { error: 'A report needs at least one phone number or email.' },
+      { error: 'A report needs at least one phone number, email, or social tag.' },
       { status: 400 }
     );
   }

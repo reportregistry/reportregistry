@@ -53,6 +53,13 @@ export async function POST(req: NextRequest) {
       cleanEmail(formData.get('subject_email_2')),
     ].filter((e): e is string => Boolean(e));
 
+    // Third identifier type alongside phone/email -- see social_handles
+    // in supabase/schema.sql. Not normalized beyond a trim, since handles
+    // vary too much by platform to validate meaningfully.
+    const socialHandles = [((formData.get('subject_social') as string) || '').trim()].filter(
+      (s): s is string => Boolean(s)
+    );
+
     const subject_first_name = firstNameOnly(formData.get('subject_name'));
 
     // One report can have more than one category (e.g. a no-show who was
@@ -79,9 +86,12 @@ export async function POST(req: NextRequest) {
 
     const file = formData.get('evidence') as File | null;
 
-    if ((phones.length === 0 && emails.length === 0) || !description) {
+    if ((phones.length === 0 && emails.length === 0 && socialHandles.length === 0) || !description) {
       return NextResponse.json(
-        { error: 'A phone number or email for the person you\'re reporting, plus a description, are required.' },
+        {
+          error:
+            'A phone number, email, or social tag/username for the person you\'re reporting, plus a description, are required.',
+        },
         { status: 400 }
       );
     }
@@ -167,6 +177,7 @@ export async function POST(req: NextRequest) {
       .insert({
         phone_numbers: phones,
         subject_emails: emails,
+        social_handles: socialHandles,
         subject_first_name,
         scam_type,
         description,
