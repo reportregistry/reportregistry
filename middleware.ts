@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 // status) is checked separately inside /dashboard and the search routes.
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
+  '/welcome(.*)',
   '/admin(.*)',
   '/api/search(.*)',
   '/api/admin(.*)',

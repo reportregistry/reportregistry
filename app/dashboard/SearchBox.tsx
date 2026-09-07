@@ -32,7 +32,7 @@ function countColorClass(count: number): string {
 // Recent searches is capped at 25 stored rows (see dashboard/page.tsx),
 // but stacking up to 25 cards on a narrow dashboard column gets messy
 // fast -- paginate the display instead of dumping them all at once.
-const HISTORY_PAGE_SIZE = 10;
+const HISTORY_PAGE_SIZE = 25;
 
 export default function SearchBox({
   initialCredits,

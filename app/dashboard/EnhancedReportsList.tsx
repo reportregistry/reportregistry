@@ -6,7 +6,7 @@ import { useState } from 'react';
 // 25 rows server-side (see dashboard/page.tsx's getEnhancedReports), but
 // paginated here instead of stacked all at once so the dashboard doesn't
 // turn into a wall of cards once someone's requested a bunch of deep dives.
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 25;
 
 type EnhancedReport = {
   id: string;

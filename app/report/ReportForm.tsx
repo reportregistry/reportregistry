@@ -240,29 +240,8 @@ export default function ReportForm() {
       encType="multipart/form-data"
       className="mx-auto max-w-lg rounded-xl border border-border bg-card p-5 text-left sm:p-8 md:p-10"
     >
-      <section>
-        <h2 className="mb-5 text-xs font-bold uppercase tracking-wide text-orange">
-          Evidence
-        </h2>
-        <div>
-          <label className="mb-2 block text-sm text-muted">
-            Screenshot or photo (optional)
-          </label>
-          <input
-            name="evidence"
-            type="file"
-            accept="image/*"
-            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-navy file:px-3 file:py-2 file:text-sm file:text-white"
-          />
-          <p className="mt-3 text-xs text-muted">
-            Upload a screenshot or photo of the conversation as supporting
-            evidence for your report.
-          </p>
-        </div>
-      </section>
-
       {isLoaded && !isSignedIn && (
-        <section className="mt-8 border-t border-border pt-6">
+        <section className="first:mt-0 first:border-t-0 first:pt-0 mt-8 border-t border-border pt-6">
           <h2 className="mb-5 text-xs font-bold uppercase tracking-wide text-orange">
             Your info
           </h2>
@@ -310,7 +289,7 @@ export default function ReportForm() {
         </section>
       )}
 
-      <section className="mt-8 border-t border-border pt-6">
+      <section className="first:mt-0 first:border-t-0 first:pt-0 mt-8 border-t border-border pt-6">
         <h2 className="mb-5 text-xs font-bold uppercase tracking-wide text-[#5aa9e6]">
           Who you're reporting
         </h2>
@@ -612,6 +591,27 @@ export default function ReportForm() {
               <span className="ml-2 shrink-0 text-xs text-muted">{publicNote.length}/500</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-5 text-xs font-bold uppercase tracking-wide text-orange">
+          Evidence
+        </h2>
+        <div>
+          <label className="mb-2 block text-sm text-muted">
+            Screenshot or photo (optional)
+          </label>
+          <input
+            name="evidence"
+            type="file"
+            accept="image/*"
+            className="block w-full text-sm text-muted file:mr-3 file:rounded-lg file:border file:border-border file:bg-navy file:px-3 file:py-2 file:text-sm file:text-white"
+          />
+          <p className="mt-3 text-xs text-muted">
+            Upload a screenshot or photo of the conversation as supporting
+            evidence for your report.
+          </p>
         </div>
       </section>
 
