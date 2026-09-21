@@ -226,16 +226,11 @@ export default function SearchBox({
 
       {result &&
         (result.isScam ? (
-          <button
-            onClick={() => setExpandedCategory((c) => (c === '__ALL__' ? null : '__ALL__'))}
-            className="mt-4 w-full rounded-lg border border-red bg-red/10 p-4 text-center font-semibold text-red transition hover:bg-red/20"
-          >
+          <div className="mt-4 w-full rounded-lg border border-red bg-red/10 p-4 text-center font-semibold text-red">
             ⚠️ {result.totalReports} report{result.totalReports === 1 ? '' : 's'} on file for
-            this contact.{' '}
-            <span className="underline">
-              {expandedCategory === '__ALL__' ? 'Hide details' : 'See details'}
-            </span>
-          </button>
+            this contact. Any with a published summary or note are shown below,
+            one card per report.
+          </div>
         ) : (
           <div className="mt-4 rounded-lg border border-green-500 bg-green-500/10 p-4 text-center font-semibold text-green-400">
             ✅ No scam reports found for this contact.
@@ -268,7 +263,10 @@ export default function SearchBox({
                 {count > 0 ? (
                   <button
                     onClick={() => setExpandedCategory((c) => (c === category ? null : category))}
-                    className={`font-semibold underline decoration-dotted ${countColorClass(count)}`}
+                    className={`font-semibold underline decoration-dotted ${countColorClass(count)} ${
+                      expandedCategory === category ? 'no-underline' : ''
+                    }`}
+                    title="Filter the reports below to just this category"
                   >
                     {count}
                   </button>
@@ -292,24 +290,33 @@ export default function SearchBox({
         </div>
       )}
 
-      {result && expandedCategory && (() => {
-        const matches =
-          expandedCategory === '__ALL__'
-            ? result.snippets
-            : result.snippets.filter((s) => s.categories.includes(expandedCategory));
+      {result && result.isScam && (() => {
+        const matches = expandedCategory
+          ? result.snippets.filter((s) => s.categories.includes(expandedCategory))
+          : result.snippets;
         return (
           <div className="mt-3 rounded-lg border border-border bg-card p-3 text-left text-sm">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-              {expandedCategory === '__ALL__'
-                ? 'All published details for this contact'
-                : `Published details: ${expandedCategory}`}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {expandedCategory
+                  ? `Reports in ${expandedCategory}`
+                  : 'Reports on file'}
+              </p>
+              {expandedCategory && (
+                <button
+                  onClick={() => setExpandedCategory(null)}
+                  className="text-xs text-orange underline"
+                >
+                  Show all categories
+                </button>
+              )}
+            </div>
             {matches.length > 0 ? (
               <div className="space-y-2">
                 {matches.map((s, i) => (
                   <div key={i} className="rounded-lg bg-navy p-3">
                     <div className="flex flex-wrap items-center justify-between gap-1">
-                      <span className="font-semibold">{s.firstName}</span>
+                      <span className="font-semibold">{s.firstName || 'Unknown'}</span>
                       <span className="text-xs text-muted">
                         {new Date(s.reportedAt).toLocaleDateString()}
                       </span>
@@ -323,9 +330,10 @@ export default function SearchBox({
               </div>
             ) : (
               <p className="text-muted">
-                No admin-written summary or approved reporter note is published for this
-                category yet. The count reflects a real filed report, but no additional public
-                detail is available beyond it.
+                No admin-written summary or approved reporter note is published{' '}
+                {expandedCategory ? 'for this category' : 'for this contact'} yet. The count
+                above reflects real filed reports, but no additional public detail has been
+                published for them.
               </p>
             )}
           </div>

@@ -1,5 +1,38 @@
 import Link from 'next/link';
 import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
+
+// Live, honest count for the homepage banner -- deliberately NOT a made-up
+// round number. Combines two real sources: approved reports actually filed
+// through the site, plus the incident counts folded into profile_overrides
+// (see supabase/schema.sql -- each override row's category_counts is a
+// jsonb map like {"Threats/Dangerous": 3} representing known incidents that
+// were never worth filing as individual report rows; a plain row count
+// would undercount those). Recalculated on every page load, so it grows on
+// its own the moment a new report is approved -- no manual updates, ever.
+async function getTotalReportCount(): Promise<number> {
+  if (!isSupabaseConfigured()) return 0;
+
+  const supabase = getServiceClient();
+
+  const { count: approvedReports } = await supabase
+    .from('reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'approved');
+
+  const { data: overrideRows } = await supabase
+    .from('profile_overrides')
+    .select('category_counts');
+
+  let overrideTotal = 0;
+  for (const row of overrideRows || []) {
+    for (const value of Object.values((row.category_counts as Record<string, number>) || {})) {
+      overrideTotal += Number(value) || 0;
+    }
+  }
+
+  return (approvedReports ?? 0) + overrideTotal;
+}
 
 // Homepage is intentionally more than just a hero + CTA -- it needs to
 // clearly explain what the product is, what it costs, and how it works
@@ -7,7 +40,9 @@ import { SignedIn, SignedOut } from '@clerk/nextjs';
 // underwriting looks at the live site to confirm what's actually being
 // sold before approving card payments; a bare hero with no pricing or
 // description reads as suspicious/incomplete to that review).
-export default function HomePage() {
+export default async function HomePage() {
+  const totalReportCount = await getTotalReportCount();
+
   return (
     <main>
       <section className="px-4 py-16 text-center sm:px-6 sm:py-24">
@@ -23,6 +58,12 @@ export default function HomePage() {
           only. Filing a report is always free and helps protect the next
           person.
         </p>
+        {totalReportCount > 0 && (
+          <p className="mx-auto mt-4 text-sm font-semibold text-orange">
+            {totalReportCount.toLocaleString()} report{totalReportCount === 1 ? '' : 's'} and
+            counting
+          </p>
+        )}
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <SignedOut>
             <Link
