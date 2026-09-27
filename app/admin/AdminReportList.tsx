@@ -900,8 +900,28 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
             )}
 
             <div className="mt-3 rounded-lg border border-orange/30 bg-orange/5 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold text-orange">
+                  Public info (shown to subscribers on search)
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                    r.admin_summary || (r.reporter_public_note && r.public_note_approved)
+                      ? 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
+                      : 'border-border text-muted'
+                  }`}
+                >
+                  {r.admin_summary
+                    ? 'Showing your summary'
+                    : r.reporter_public_note && r.public_note_approved
+                      ? "Showing reporter's note"
+                      : 'Nothing published'}
+                </span>
+              </div>
+
               <label className="mb-1.5 block text-xs font-semibold text-orange">
-                Public summary (shown to subscribers on search, optional, admin-written only)
+                Your summary, in your own words (optional -- overrides the reporter's note below
+                if both are filled in)
               </label>
               {!r.admin_summary && extractOtherDetail(r.description) && summaryDrafts[r.id] === undefined && (
                 <p className="mb-1.5 text-xs text-muted">
@@ -946,85 +966,85 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
               {summaryError[r.id] && (
                 <p className="mt-1 text-xs text-red">{summaryError[r.id]}</p>
               )}
-            </div>
 
-            {r.reporter_public_note && (
-              <div className="mt-3 rounded-lg border border-[#a78bfa]/30 bg-[#a78bfa]/5 p-3">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#a78bfa]">
-                    Reporter's public note (their own words, not yours)
-                  </span>
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                      r.public_note_approved
-                        ? 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
-                        : 'border-border text-muted'
-                    }`}
-                  >
-                    {r.public_note_approved ? 'Approved, visible on search' : 'Not approved'}
-                  </span>
-                </div>
-
-                {editingNoteId === r.id ? (
-                  <>
-                    <textarea
-                      value={noteDrafts[r.id] ?? r.reporter_public_note ?? ''}
-                      onChange={(e) =>
-                        setNoteDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))
-                      }
-                      maxLength={500}
-                      rows={3}
-                      className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-[#a78bfa]"
-                    />
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="text-xs text-muted">
-                        {(noteDrafts[r.id] ?? r.reporter_public_note ?? '').length}/500
-                      </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => cancelNoteEdit(r.id)}
-                          className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          disabled={busyId === r.id}
-                          onClick={() => saveNoteEdit(r)}
-                          className="rounded-lg bg-[#a78bfa] px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-50"
-                        >
-                          Save note
-                        </button>
-                      </div>
-                    </div>
-                    {noteError[r.id] && <p className="mt-1 text-xs text-red">{noteError[r.id]}</p>}
-                  </>
-                ) : (
-                  <p className="rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
-                )}
-
-                <div className="mt-2 flex gap-2">
-                  {editingNoteId !== r.id && (
-                    <button
-                      onClick={() => startNoteEdit(r)}
-                      className="rounded-lg border border-[#a78bfa]/40 px-3 py-1.5 text-xs font-semibold text-[#a78bfa]"
+              {r.reporter_public_note && (
+                <div className="mt-3 border-t border-orange/20 pt-3">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[#a78bfa]">
+                      Reporter's public note (their own words, not yours)
+                    </span>
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                        r.public_note_approved
+                          ? 'border-[#5aa9e6]/40 bg-[#5aa9e6]/10 text-[#5aa9e6]'
+                          : 'border-border text-muted'
+                      }`}
                     >
-                      Edit note
-                    </button>
+                      {r.public_note_approved ? 'Approved, visible on search' : 'Not approved'}
+                    </span>
+                  </div>
+
+                  {editingNoteId === r.id ? (
+                    <>
+                      <textarea
+                        value={noteDrafts[r.id] ?? r.reporter_public_note ?? ''}
+                        onChange={(e) =>
+                          setNoteDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))
+                        }
+                        maxLength={500}
+                        rows={3}
+                        className="w-full rounded-lg border border-border bg-navy px-3 py-2 text-sm text-white outline-none focus:border-[#a78bfa]"
+                      />
+                      <div className="mt-1 flex items-center justify-between">
+                        <span className="text-xs text-muted">
+                          {(noteDrafts[r.id] ?? r.reporter_public_note ?? '').length}/500
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => cancelNoteEdit(r.id)}
+                            className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            disabled={busyId === r.id}
+                            onClick={() => saveNoteEdit(r)}
+                            className="rounded-lg bg-[#a78bfa] px-3 py-1.5 text-xs font-semibold text-navy disabled:opacity-50"
+                          >
+                            Save note
+                          </button>
+                        </div>
+                      </div>
+                      {noteError[r.id] && <p className="mt-1 text-xs text-red">{noteError[r.id]}</p>}
+                    </>
+                  ) : (
+                    <p className="rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
                   )}
-                  <button
-                    disabled={busyId === r.id}
-                    onClick={() => togglePublicNote(r)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
-                      r.public_note_approved
-                        ? 'border border-red text-red'
-                        : 'bg-[#a78bfa] text-navy'
-                    }`}
-                  >
-                    {r.public_note_approved ? 'Unapprove' : 'Approve to show publicly'}
-                  </button>
+
+                  <div className="mt-2 flex gap-2">
+                    {editingNoteId !== r.id && (
+                      <button
+                        onClick={() => startNoteEdit(r)}
+                        className="rounded-lg border border-[#a78bfa]/40 px-3 py-1.5 text-xs font-semibold text-[#a78bfa]"
+                      >
+                        Edit note
+                      </button>
+                    )}
+                    <button
+                      disabled={busyId === r.id}
+                      onClick={() => togglePublicNote(r)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+                        r.public_note_approved
+                          ? 'border border-red text-red'
+                          : 'bg-[#a78bfa] text-navy'
+                      }`}
+                    >
+                      {r.public_note_approved ? 'Unapprove' : 'Approve to show publicly'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {r.status === 'approved' && (
               <div className="mt-3 rounded-lg border border-red/40 bg-red/5 p-3">

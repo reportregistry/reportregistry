@@ -230,7 +230,7 @@ export async function POST(req: NextRequest) {
   // them for typo fixes, so this only fires the first time.
   const { data: existing } = await supabase
     .from('reports')
-    .select('status')
+    .select('status, reporter_public_note, public_note_approved')
     .eq('id', body.id)
     .maybeSingle();
   const wasApproved = existing?.status === 'approved';
@@ -243,6 +243,27 @@ export async function POST(req: NextRequest) {
   // should re-flag an already-resolved report as freshly resolved again.
   if (existing && existing.status !== body.status) {
     updates.resolved_at = body.status === 'pending' ? null : new Date().toISOString();
+  }
+
+  // Approving a report now also approves its note for public display in
+  // the same click, rather than requiring a second explicit "Approve to
+  // show publicly" -- since What happened/Public note got merged into one
+  // field on the report form, most reports arrive with a note attached by
+  // default, so a second gate mostly just meant an extra click admins
+  // would forget. Only auto-approves on the actual transition INTO
+  // approved (not on every re-save of an already-approved report), only
+  // when there's a note to approve, and only when this same request isn't
+  // already explicitly setting public_note_approved itself -- an admin can
+  // still unapprove a specific note afterward if they don't want it shown.
+  if (
+    existing &&
+    existing.status !== 'approved' &&
+    body.status === 'approved' &&
+    existing.reporter_public_note &&
+    !existing.public_note_approved &&
+    body.public_note_approved === undefined
+  ) {
+    updates.public_note_approved = true;
   }
 
   const { data, error } = await supabase
