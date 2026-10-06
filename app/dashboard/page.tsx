@@ -101,7 +101,7 @@ async function getRedAlerts(): Promise<RedAlert[]> {
     .eq('status', 'approved')
     .not('alert_sent_at', 'is', null)
     .order('alert_sent_at', { ascending: false })
-    .limit(20);
+    .limit(100);
   return (data || []) as RedAlert[];
 }
 

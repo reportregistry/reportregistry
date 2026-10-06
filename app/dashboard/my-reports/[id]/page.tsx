@@ -31,7 +31,7 @@ export default async function MyReportDetailPage({ params }: { params: { id: str
   const { data: report } = await supabase
     .from('reports')
     .select(
-      'id, phone_numbers, subject_emails, social_handles, subject_first_name, scam_type, description, admin_summary, reporter_public_note, public_note_approved, status, created_at, tracking_code'
+      'id, phone_numbers, subject_emails, social_handles, subject_first_name, scam_type, description, admin_summary, reporter_public_note, public_note_approved, status, created_at, tracking_code, red_alert_requested, alert_sent_at'
     )
     .eq('id', params.id)
     .eq('reporter_clerk_user_id', userId)
@@ -122,6 +122,17 @@ export default async function MyReportDetailPage({ params }: { params: { id: str
               <p className="mt-1 whitespace-pre-wrap text-sm">{report.reporter_public_note}</p>
             </div>
           )}
+
+          {report.alert_sent_at ? (
+            <p className="mt-4 rounded-lg border border-red/50 bg-red/10 p-2 text-xs font-semibold text-red">
+              ⚠️ Sent to all subscribers as a Red Alert on{' '}
+              {new Date(report.alert_sent_at).toLocaleDateString()}.
+            </p>
+          ) : report.red_alert_requested && report.status !== 'removed' ? (
+            <p className="mt-4 rounded-lg border border-red/40 bg-red/5 p-2 text-xs text-red">
+              ⚠️ You requested a Red Alert. Our team will review it.
+            </p>
+          ) : null}
 
           {report.status === 'pending' && (
             <p className="mt-4 text-xs italic text-muted">

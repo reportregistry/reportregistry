@@ -101,6 +101,11 @@ export default function ReportForm() {
   // existing moderation gate (public_note_approved) is untouched; this
   // only removes the duplicate typing, not the approval step.
   const [description, setDescription] = useState('');
+  // "Request a Red Alert": a request for admins, never an automatic send.
+  // /report?red_alert=1 (linked from the dashboard Red Alerts panel)
+  // opens the form with it already checked.
+  const [redAlertRequested, setRedAlertRequested] = useState(searchParams.get('red_alert') === '1');
+  const [redAlertReason, setRedAlertReason] = useState('');
 
   function toggleScamType(t: string) {
     setScamTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -148,6 +153,17 @@ export default function ReportForm() {
     // reporter_public_note cap api/report/route.ts already enforces; the
     // full, untruncated text still goes through as `description`.
     formData.set('reporter_public_note', description.slice(0, 500));
+
+    formData.delete('red_alert_requested');
+    formData.delete('red_alert_reason');
+    if (redAlertRequested) {
+      if (!redAlertReason.trim()) {
+        setError('Please say briefly why this needs a Red Alert, or uncheck the request.');
+        return;
+      }
+      formData.set('red_alert_requested', 'on');
+      formData.set('red_alert_reason', redAlertReason.trim().slice(0, 500));
+    }
 
     if (!phone && !phone2 && !email && !email2 && !social) {
       setError(
@@ -197,6 +213,8 @@ export default function ReportForm() {
     setError('');
     setScamTypes([]);
     setDescription('');
+    setRedAlertRequested(false);
+    setRedAlertReason('');
     setShowPhone2(false);
     setShowEmail(Boolean(prefillEmail));
     setShowEmail2(false);
@@ -590,6 +608,46 @@ export default function ReportForm() {
               </span>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mt-8 border-t border-border pt-6">
+        <div
+          className={`rounded-lg border p-4 ${
+            redAlertRequested ? 'border-red bg-red/10' : 'border-red/40 bg-red/5'
+          }`}
+        >
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={redAlertRequested}
+              onChange={(e) => setRedAlertRequested(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-[#ff4d4f]"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-red">⚠️ Request a Red Alert</span>
+              <span className="mt-1 block text-xs text-muted">
+                For serious situations only: threats, stalking, violence, or someone
+                actively targeting people. If our team approves it after review, every
+                subscriber is alerted about this contact. Your name and details are never
+                included.
+              </span>
+            </span>
+          </label>
+          {redAlertRequested && (
+            <div className="mt-3">
+              <label className="mb-2 block text-sm text-muted">Why does this need a Red Alert? *</label>
+              <textarea
+                value={redAlertReason}
+                onChange={(e) => setRedAlertReason(e.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="What makes this urgent or dangerous for others?"
+                className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-red"
+              />
+              <p className="mt-1 text-right text-xs text-muted">{redAlertReason.length}/500</p>
+            </div>
+          )}
         </div>
       </section>
 

@@ -84,6 +84,17 @@ export async function POST(req: NextRequest) {
     // in case the client-side maxLength gets bypassed.
     const reporterPublicNote = ((formData.get('reporter_public_note') as string) || '').trim().slice(0, 500) || null;
 
+    // Optional "Request a Red Alert" checkbox on the form. A request only:
+    // it flags the report for admins in /admin, it never sends anything.
+    const redAlertRequested = formData.get('red_alert_requested') === 'on';
+    const redAlertReason = ((formData.get('red_alert_reason') as string) || '').trim().slice(0, 500);
+    if (redAlertRequested && !redAlertReason) {
+      return NextResponse.json(
+        { error: 'Please say briefly why this needs a Red Alert, or uncheck the request.' },
+        { status: 400 }
+      );
+    }
+
     const file = formData.get('evidence') as File | null;
 
     if ((phones.length === 0 && emails.length === 0 && socialHandles.length === 0) || !description) {
@@ -192,6 +203,9 @@ export async function POST(req: NextRequest) {
         reporter_clerk_user_id: userId || null,
         evidence_urls,
         status: 'pending',
+        // Only included when requested, so ordinary reports keep working
+        // even on a database that hasn't run the Red Alert migration yet.
+        ...(redAlertRequested ? { red_alert_requested: true, red_alert_reason: redAlertReason } : {}),
       })
       .select('tracking_code')
       .single();

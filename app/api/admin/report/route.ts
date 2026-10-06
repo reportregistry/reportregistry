@@ -82,6 +82,7 @@ type Body = {
   admin_summary?: string | null;
   reporter_public_note?: string | null;
   public_note_approved?: boolean;
+  red_alert_requested?: boolean;
   phone_numbers?: string[];
   subject_emails?: string[];
   social_handles?: string[];
@@ -134,6 +135,12 @@ export async function POST(req: NextRequest) {
   // separate decision from approving the report itself -- a report can be
   // a real, approved incident while its reporter's specific wording still
   // stays unpublished if an admin doesn't want to vouch for it verbatim.
+  // Admin dismissing a reporter's Red Alert request (the request text is
+  // kept for the record, only the flag is cleared).
+  if (body.red_alert_requested !== undefined) {
+    updates.red_alert_requested = Boolean(body.red_alert_requested);
+  }
+
   if (body.public_note_approved !== undefined) {
     updates.public_note_approved = Boolean(body.public_note_approved);
   }

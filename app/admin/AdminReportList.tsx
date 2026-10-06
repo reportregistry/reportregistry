@@ -16,6 +16,8 @@ type Report = {
   public_note_approved: boolean;
   alert_message: string | null;
   alert_sent_at: string | null;
+  red_alert_requested?: boolean | null;
+  red_alert_reason?: string | null;
   reporter_name: string | null;
   reporter_email: string | null;
   reporter_phone: string | null;
@@ -30,7 +32,12 @@ const STATUS_STYLES: Record<string, string> = {
   removed: 'border-red/40 bg-red/10 text-red',
 };
 
-const FILTERS = ['pending', 'approved', 'removed', 'all'] as const;
+const FILTERS = ['pending', 'approved', 'removed', 'all', 'alert requests'] as const;
+
+// An open Red Alert request: the reporter asked for one, no alert has been
+// sent yet, and the report hasn't been removed.
+const isOpenAlertRequest = (r: { red_alert_requested?: boolean | null; alert_sent_at: string | null; status: string }) =>
+  Boolean(r.red_alert_requested) && !r.alert_sent_at && r.status !== 'removed';
 
 type EditDraft = {
   phone_numbers: string;
@@ -428,6 +435,22 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
     }
   }
 
+  async function dismissAlertRequest(report: Report) {
+    setBusyId(report.id);
+    try {
+      const res = await fetch('/api/admin/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: report.id, status: report.status, red_alert_requested: false }),
+      });
+      if (res.ok) {
+        setReports((prev) => prev.map((r) => (r.id === report.id ? { ...r, red_alert_requested: false } : r)));
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function sendRedAlert(report: Report) {
     const message = (alertDrafts[report.id] ?? report.alert_message ?? '').trim();
     if (!message) {
@@ -461,7 +484,12 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
     }
   }
 
-  const byStatus = filter === 'all' ? reports : reports.filter((r) => r.status === filter);
+  const byStatus =
+    filter === 'all'
+      ? reports
+      : filter === 'alert requests'
+        ? reports.filter(isOpenAlertRequest)
+        : reports.filter((r) => r.status === filter);
   const searchTerm = search.trim().toLowerCase();
   const visible = searchTerm
     ? byStatus.filter((r) => {
@@ -504,7 +532,13 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 : 'border-border text-muted hover:text-white'
             }`}
           >
-            {f} ({f === 'all' ? reports.length : reports.filter((r) => r.status === f).length})
+            {f === 'alert requests' ? '⚠️ Red Alert requests' : f} (
+            {f === 'all'
+              ? reports.length
+              : f === 'alert requests'
+                ? reports.filter(isOpenAlertRequest).length
+                : reports.filter((r) => r.status === f).length}
+            )
           </button>
         ))}
         <button
@@ -679,6 +713,11 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 <span className="ml-2 text-xs text-muted">
                   {new Date(r.created_at).toLocaleString()}
                 </span>
+                {isOpenAlertRequest(r) && (
+                  <span className="ml-2 inline-block rounded-full bg-red px-2.5 py-0.5 text-xs font-bold text-white">
+                    ⚠️ Red Alert requested
+                  </span>
+                )}
               </div>
               <div className="flex gap-2">
                 {r.status !== 'approved' && (
@@ -1045,6 +1084,29 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                 </div>
               )}
             </div>
+
+            {isOpenAlertRequest(r) && (
+              <div className="mt-3 rounded-lg border border-red bg-red/10 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className="text-xs font-semibold text-red">
+                    The reporter asked for a Red Alert. Their reason (their words, not for sending as is):
+                  </span>
+                  <button
+                    disabled={busyId === r.id}
+                    onClick={() => dismissAlertRequest(r)}
+                    className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-muted hover:text-white disabled:opacity-50"
+                  >
+                    Dismiss request
+                  </button>
+                </div>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm">{r.red_alert_reason || '(no reason given)'}</p>
+                {r.status !== 'approved' && (
+                  <p className="mt-1.5 text-xs italic text-muted">
+                    Approve the report first, then write and send the alert in the Red Alert box that appears below.
+                  </p>
+                )}
+              </div>
+            )}
 
             {r.status === 'approved' && (
               <div className="mt-3 rounded-lg border border-red/40 bg-red/5 p-3">

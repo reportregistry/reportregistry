@@ -71,6 +71,11 @@ create table if not exists reports (
   -- admin actually sends it, and gets overwritten (not appended) on a
   -- resend, so it always reflects the most recent send.
   alert_message text check (char_length(alert_message) <= 1000),
+  -- Reporter asked for this report to go out as a Red Alert (checkbox on
+  -- the report form) plus their reason. Request only -- an admin still
+  -- decides and writes the alert. See migration_red_alert_requests.sql.
+  red_alert_requested boolean not null default false,
+  red_alert_reason text check (char_length(red_alert_reason) <= 500),
   alert_sent_at timestamptz,
   evidence_urls text[] default '{}',
   status text not null default 'pending', -- pending | approved | removed
