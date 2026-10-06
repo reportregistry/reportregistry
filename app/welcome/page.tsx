@@ -28,8 +28,8 @@ export default async function WelcomePage() {
         <div className="rounded-xl border border-border bg-card p-6">
           <p className="text-xs font-bold uppercase tracking-wide text-orange">1. Reporting is always free</p>
           <p className="mt-2 text-sm text-muted">
-            Anyone can file a report on a scammer, spam caller, or no-show
-            -- no subscription required. Every report is reviewed before it
+            Anyone can file a report on a scammer, spam caller, or no-show,
+            no subscription required. Every report is reviewed before it
             shows up in search, and your own contact info is never shown to
             subscribers or the public.
           </p>
@@ -42,7 +42,7 @@ export default async function WelcomePage() {
           <p className="mt-2 text-sm text-muted">
             Checking a phone number, email, or social tag against the
             registry before you deal with someone is what subscribing
-            unlocks -- plus the ability to watch a number for future
+            unlocks, plus the ability to watch a number for future
             reports and request a deeper look on one that matters.
           </p>
         </div>

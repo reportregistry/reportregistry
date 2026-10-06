@@ -920,7 +920,7 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
               </div>
 
               <label className="mb-1.5 block text-xs font-semibold text-orange">
-                Your summary, in your own words (optional -- overrides the reporter's note below
+                Your summary, in your own words (optional, overrides the reporter's note below
                 if both are filled in)
               </label>
               {!r.admin_summary && extractOtherDetail(r.description) && summaryDrafts[r.id] === undefined && (

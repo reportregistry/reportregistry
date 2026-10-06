@@ -125,7 +125,7 @@ export default async function MyReportDetailPage({ params }: { params: { id: str
 
           {report.status === 'pending' && (
             <p className="mt-4 text-xs italic text-muted">
-              Still awaiting review -- it'll only count in search results once approved.
+              Still awaiting review. It'll only count in search results once approved.
             </p>
           )}
           {report.status === 'removed' && (
