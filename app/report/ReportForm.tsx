@@ -574,7 +574,7 @@ export default function ReportForm() {
               rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What happened, in your own words -- how you were contacted, what they asked for, anything else worth knowing."
+              placeholder="What happened, in your own words: how you were contacted, what they asked for, anything else worth knowing."
               className="w-full rounded-lg border border-border bg-navy px-4 py-3 outline-none focus:border-[#a78bfa]"
             />
             <div className="mt-1 flex items-center justify-between gap-2">
