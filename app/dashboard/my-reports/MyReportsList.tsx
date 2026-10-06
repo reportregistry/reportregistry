@@ -132,10 +132,20 @@ export function MyReportsList({
                       {r.status}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted">
-                    Filed {new Date(r.created_at).toLocaleDateString()}
-                    {r.subject_first_name ? `, ${r.subject_first_name}` : ''}
-                  </p>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted">
+                      Filed {new Date(r.created_at).toLocaleDateString()}
+                      {r.subject_first_name ? `, ${r.subject_first_name}` : ''}
+                    </p>
+                    {r.status !== 'removed' && (
+                      <Link
+                        href={`/dashboard/my-reports/${r.id}#edit`}
+                        className="shrink-0 text-xs font-semibold text-orange underline decoration-dotted"
+                      >
+                        Edit
+                      </Link>
+                    )}
+                  </div>
                 </div>
               );
             })}

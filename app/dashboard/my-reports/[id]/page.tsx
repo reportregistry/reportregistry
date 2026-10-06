@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
+import EditMyReport from './EditMyReport';
 
 const STATUS_STYLES: Record<string, string> = {
   pending: 'border-orange/40 bg-orange/10 text-orange',
@@ -132,6 +133,8 @@ export default async function MyReportDetailPage({ params }: { params: { id: str
               This report was reviewed and removed, so it doesn't appear in search results.
             </p>
           )}
+
+          <EditMyReport report={report} />
         </div>
       </div>
     </main>
