@@ -54,6 +54,11 @@ export default function AdminProfileOverrides() {
           ? String(data.overrideCounts[category])
           : '';
       }
+      // Draft is the TOTAL subscribers will see (real + override).
+      for (const category of SCAM_TYPES) {
+        const total = (data.computedCounts?.[category] ?? 0) + (data.overrideCounts?.[category] ?? 0);
+        nextDrafts[category] = total > 0 ? String(total) : '';
+      }
       setDrafts(nextDrafts);
       setNotes(data.notes || '');
     } catch {
@@ -71,8 +76,12 @@ export default function AdminProfileOverrides() {
     try {
       const categoryCounts: Record<string, number> = {};
       for (const category of SCAM_TYPES) {
-        const n = Number(drafts[category]);
-        if (Number.isFinite(n) && n > 0) categoryCounts[category] = Math.floor(n);
+        // Field holds the desired TOTAL; store only the extra on top of the
+        // real approved-report count (never below it -- real reports can't be hidden).
+        const total = Number(drafts[category]);
+        const real = lookup.computedCounts[category] ?? 0;
+        const extra = Math.floor(total) - real;
+        if (Number.isFinite(total) && extra > 0) categoryCounts[category] = extra;
       }
       const res = await fetch('/api/admin/profile-override', {
         method: 'POST',
@@ -136,7 +145,7 @@ export default function AdminProfileOverrides() {
                 <tr className="text-xs text-muted">
                   <th className="pb-2 pr-4">Category</th>
                   <th className="pb-2 pr-4">Real (from filed reports)</th>
-                  <th className="pb-2">Manual override (added on top)</th>
+                  <th className="pb-2">Total shown to subscribers (min = real)</th>
                 </tr>
               </thead>
               <tbody>

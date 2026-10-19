@@ -1018,7 +1018,7 @@ export default function AdminReportList({ initialReports }: { initialReports: Re
                       {noteError[r.id] && <p className="mt-1 text-xs text-red">{noteError[r.id]}</p>}
                     </>
                   ) : (
-                    <p className="rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
+                    <p className="whitespace-pre-wrap rounded-lg bg-navy p-2 text-sm text-white">{r.reporter_public_note}</p>
                   )}
 
                   <div className="mt-2 flex gap-2">

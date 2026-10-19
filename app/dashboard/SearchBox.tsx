@@ -317,14 +317,11 @@ export default function SearchBox({
                   <div key={i} className="rounded-lg bg-navy p-3">
                     <div className="flex flex-wrap items-center justify-between gap-1">
                       <span className="font-semibold">{s.firstName || 'Unknown'}</span>
-                      <span className="text-xs text-muted">
-                        {new Date(s.reportedAt).toLocaleDateString()}
-                      </span>
                     </div>
                     {s.categories.length > 0 && (
                       <p className="mt-1 text-xs text-orange">{s.categories.join(', ')}</p>
                     )}
-                    <p className="mt-1.5 text-muted">{s.summary}</p>
+                    <p className="mt-1.5 whitespace-pre-wrap text-muted">{s.summary}</p>
                   </div>
                 ))}
               </div>
