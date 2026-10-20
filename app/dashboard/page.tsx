@@ -3,7 +3,6 @@ import { getServiceClient, isSupabaseConfigured } from '@/lib/supabase';
 import SubscribeButton from './SubscribeButton';
 import ManageSubscriptionButton from './ManageSubscriptionButton';
 import DashboardTabs from './DashboardTabs';
-import RedAlerts, { type RedAlert } from './RedAlerts';
 
 async function getSubscriber(clerkUserId: string) {
   const supabase = getServiceClient();
@@ -89,20 +88,38 @@ async function getMyReportsWithInbox(clerkUserId: string) {
   return { reports: data || [], previousLastSeenAt };
 }
 
-// Latest Red Alerts for the panel above the dashboard tabs (see
-// RedAlerts.tsx). Only approved reports with an alert actually sent --
-// filtering on status here is what makes an alert vanish everywhere the
-// moment its report is reset to pending or removed.
-async function getRedAlerts(): Promise<RedAlert[]> {
+// Powers the "Red Alerts" tab in DashboardTabs.tsx -- every report an
+// admin has approved into the feed (alert_sent_at set, see
+// api/admin/report/alert/route.ts), visible to EVERY active subscriber
+// regardless of whether they've searched or watched that number. Same
+// "New" + mark-as-read pattern as getMyReportsWithInbox above, just keyed
+// off red_alert_inbox_state instead of report_inbox_state so the two
+// unread badges in SiteHeader.tsx track independently.
+async function getRedAlertsWithInbox(clerkUserId: string) {
   const supabase = getServiceClient();
+
+  const { data: inboxState } = await supabase
+    .from('red_alert_inbox_state')
+    .select('last_seen_at')
+    .eq('clerk_user_id', clerkUserId)
+    .maybeSingle();
+  const previousLastSeenAt = inboxState?.last_seen_at || new Date(0).toISOString();
+
   const { data } = await supabase
     .from('reports')
-    .select('id, phone_numbers, subject_emails, subject_first_name, scam_type, alert_message, alert_sent_at')
+    .select(
+      'id, phone_numbers, subject_emails, social_handles, subject_first_name, scam_type, alert_message, alert_sent_at'
+    )
     .eq('status', 'approved')
     .not('alert_sent_at', 'is', null)
     .order('alert_sent_at', { ascending: false })
-    .limit(20);
-  return (data || []) as RedAlert[];
+    .limit(200);
+
+  await supabase
+    .from('red_alert_inbox_state')
+    .upsert({ clerk_user_id: clerkUserId, last_seen_at: new Date().toISOString() });
+
+  return { reports: data || [], previousLastSeenAt };
 }
 
 async function getEnhancedReports(clerkUserId: string) {
@@ -139,15 +156,21 @@ export default async function DashboardPage() {
     ? await getSubscriber(userId)
     : { isActive: false, credits: 0 };
 
-  const [searchHistory, enhancedReports, watches, myReportsData, redAlerts] = userId && isActive
+  const [searchHistory, enhancedReports, watches, myReportsData, redAlertsData] = userId && isActive
     ? await Promise.all([
         getSearchHistory(userId),
         getEnhancedReports(userId),
         getWatches(userId),
         getMyReportsWithInbox(userId),
-        getRedAlerts(),
+        getRedAlertsWithInbox(userId),
       ])
-    : [[], [], [], { reports: [], previousLastSeenAt: new Date(0).toISOString() }, [] as RedAlert[]];
+    : [
+        [],
+        [],
+        [],
+        { reports: [], previousLastSeenAt: new Date(0).toISOString() },
+        { reports: [], previousLastSeenAt: new Date(0).toISOString() },
+      ];
 
   return (
     <main className="min-h-screen px-6 py-24 text-center">
@@ -155,7 +178,6 @@ export default async function DashboardPage() {
 
       {isActive ? (
         <>
-          <RedAlerts alerts={redAlerts} />
           <DashboardTabs
             initialCredits={credits}
             initialHistory={searchHistory}
@@ -163,6 +185,8 @@ export default async function DashboardPage() {
             enhancedReports={enhancedReports}
             myReports={myReportsData.reports}
             myReportsPreviousLastSeenAt={myReportsData.previousLastSeenAt}
+            redAlerts={redAlertsData.reports}
+            redAlertsPreviousLastSeenAt={redAlertsData.previousLastSeenAt}
           />
           <div className="mt-8">
             <ManageSubscriptionButton />

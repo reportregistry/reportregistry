@@ -101,6 +101,7 @@ export default function ReportForm() {
   // existing moderation gate (public_note_approved) is untouched; this
   // only removes the duplicate typing, not the approval step.
   const [description, setDescription] = useState('');
+  const [redAlertRequested, setRedAlertRequested] = useState(false);
 
   function toggleScamType(t: string) {
     setScamTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -197,6 +198,7 @@ export default function ReportForm() {
     setError('');
     setScamTypes([]);
     setDescription('');
+    setRedAlertRequested(false);
     setShowPhone2(false);
     setShowEmail(Boolean(prefillEmail));
     setShowEmail2(false);
@@ -549,6 +551,25 @@ export default function ReportForm() {
               </p>
             </div>
           )}
+
+          <label className="flex items-start gap-2 rounded-lg border border-red/30 bg-red/5 p-3 text-sm">
+            <input
+              type="checkbox"
+              name="red_alert_requested"
+              checked={redAlertRequested}
+              onChange={(e) => setRedAlertRequested(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-red"
+            />
+            <span>
+              <span className="font-semibold text-red">Mark as Red Alert</span>
+              <span className="block text-xs text-muted">
+                Check this if you believe this person is dangerous or this is
+                urgent enough that other subscribers should be warned right
+                away. This is just a request. An admin reviews it before
+                it's ever shown in the Red Alerts feed.
+              </span>
+            </span>
+          </label>
 
           {scamTypes.includes('Other') && (
             <div>

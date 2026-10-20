@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import SearchBox from './SearchBox';
 import WatchList from './WatchList';
 import EnhancedReportsList from './EnhancedReportsList';
 import { MyReportsList, type MyReportSummary } from './my-reports/MyReportsList';
+import { RedAlertsList, type RedAlertReport } from './RedAlertsList';
 
 type HistoryItem = {
   query_type: string;
@@ -31,7 +33,7 @@ type EnhancedReport = {
   resolved_at: string | null;
 };
 
-const TABS = ['search', 'watching', 'enhanced', 'myReports'] as const;
+const TABS = ['search', 'watching', 'enhanced', 'myReports', 'redAlerts'] as const;
 type Tab = (typeof TABS)[number];
 
 // Splits what used to be one long, stacked dashboard page (search box,
@@ -50,6 +52,11 @@ type Tab = (typeof TABS)[number];
 // (filing is free and doesn't require a subscription), but a subscriber
 // checking search now never has to leave this screen to see what they've
 // filed.
+//
+// "Red Alerts" is the 5th tab -- a feed of every report an admin has
+// approved as urgent (see api/admin/report/alert/route.ts), visible to
+// every active subscriber. Same unread-badge treatment as My Reports, just
+// tracked separately via red_alert_inbox_state so the two counts don't mix.
 export default function DashboardTabs({
   initialCredits,
   initialHistory,
@@ -57,6 +64,8 @@ export default function DashboardTabs({
   enhancedReports,
   myReports,
   myReportsPreviousLastSeenAt,
+  redAlerts,
+  redAlertsPreviousLastSeenAt,
 }: {
   initialCredits: number;
   initialHistory: HistoryItem[];
@@ -64,11 +73,25 @@ export default function DashboardTabs({
   enhancedReports: EnhancedReport[];
   myReports: MyReportSummary[];
   myReportsPreviousLastSeenAt: string;
+  redAlerts: RedAlertReport[];
+  redAlertsPreviousLastSeenAt: string;
 }) {
-  const [tab, setTab] = useState<Tab>('search');
+  // Lets the "Red Alerts" nav badge in SiteHeader.tsx link straight to
+  // /dashboard?tab=redAlerts and land on that tab already open, instead of
+  // dropping someone on Search and making them click again.
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = (TABS as readonly string[]).includes(requestedTab || '')
+    ? (requestedTab as Tab)
+    : 'search';
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   const newReportCount = myReports.filter(
     (r) => r.status !== 'pending' && r.resolved_at && r.resolved_at > myReportsPreviousLastSeenAt
+  ).length;
+
+  const newRedAlertCount = redAlerts.filter(
+    (r) => r.alert_sent_at > redAlertsPreviousLastSeenAt
   ).length;
 
   const labels: Record<Tab, string> = {
@@ -76,6 +99,7 @@ export default function DashboardTabs({
     watching: `Watching (${watches.length})`,
     enhanced: `Enhanced Reports (${enhancedReports.length})`,
     myReports: `My Reports (${myReports.length})${newReportCount > 0 ? ` · ${newReportCount} new` : ''}`,
+    redAlerts: `Red Alerts (${redAlerts.length})${newRedAlertCount > 0 ? ` · ${newRedAlertCount} new` : ''}`,
   };
 
   return (
@@ -90,7 +114,9 @@ export default function DashboardTabs({
                 ? 'border-white bg-white text-navy'
                 : t === 'myReports' && newReportCount > 0
                   ? 'border-orange text-orange'
-                  : 'border-border text-muted hover:text-white'
+                  : t === 'redAlerts' && newRedAlertCount > 0
+                    ? 'border-red text-red'
+                    : 'border-border text-muted hover:text-white'
             }`}
           >
             {labels[t]}
@@ -132,6 +158,12 @@ export default function DashboardTabs({
                 File another report
               </Link>
             </p>
+          </div>
+        )}
+
+        {tab === 'redAlerts' && (
+          <div className="mx-auto max-w-md text-left">
+            <RedAlertsList reports={redAlerts} previousLastSeenAt={redAlertsPreviousLastSeenAt} />
           </div>
         )}
       </div>

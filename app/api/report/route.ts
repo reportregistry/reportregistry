@@ -62,6 +62,11 @@ export async function POST(req: NextRequest) {
 
     const subject_first_name = firstNameOnly(formData.get('subject_name'));
 
+    // Reporter's own "this seems dangerous/urgent" flag -- just a request,
+    // never shown or acted on until an admin reviews and explicitly
+    // approves it into the Red Alerts feed (see api/admin/report/alert/route.ts).
+    const red_alert_requested = formData.get('red_alert_requested') === 'on';
+
     // One report can have more than one category (e.g. a no-show who was
     // also threatening), so this is every valid value the client sent,
     // deduped -- not just the first one.
@@ -181,6 +186,7 @@ export async function POST(req: NextRequest) {
         subject_first_name,
         scam_type,
         description,
+        red_alert_requested,
         reporter_name: reporterName,
         reporter_email: finalReporterEmail,
         reporter_phone: finalReporterPhone,

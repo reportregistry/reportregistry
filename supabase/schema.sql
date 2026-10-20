@@ -62,14 +62,19 @@ create table if not exists reports (
   -- author.
   reporter_public_note text check (char_length(reporter_public_note) <= 500),
   public_note_approved boolean not null default false,
-  -- "Red Alert": a one-off, admin-written email blast about this specific
-  -- report, sent to every currently-active subscriber on demand (see
-  -- app/api/admin/report/alert/route.ts) -- separate from the Watch
-  -- feature, which only emails the specific subscribers who chose to
-  -- watch this number/email. alert_message is admin-authored, same
-  -- editorial rule as admin_summary; alert_sent_at is null until the
-  -- admin actually sends it, and gets overwritten (not appended) on a
-  -- resend, so it always reflects the most recent send.
+  -- "Red Alert": NOT an email blast (that was an earlier design, since
+  -- removed) -- now a persistent, browsable feed at /dashboard under the
+  -- "Red Alerts" tab, visible to every active subscriber. red_alert_requested
+  -- is a flag either the reporter (checkbox on the report form) or an admin
+  -- can set, meaning "someone thinks this belongs in the feed." It never
+  -- shows up in the feed on its own -- an admin still has to explicitly
+  -- approve it (see app/api/admin/report/alert/route.ts), which is what
+  -- sets alert_sent_at (repurposed here as "posted to the feed at", not
+  -- "emailed at"). alert_message is an optional admin-written blurb shown
+  -- in the feed alongside the identifiers; same editorial rule as
+  -- admin_summary, never the reporter's raw description. Unapproving clears
+  -- alert_sent_at back to null, which pulls it back out of the feed.
+  red_alert_requested boolean not null default false,
   alert_message text check (char_length(alert_message) <= 1000),
   alert_sent_at timestamptz,
   evidence_urls text[] default '{}',
@@ -212,6 +217,16 @@ alter table watches enable row level security;
 -- "never viewed," so everything resolved counts as unread until their
 -- first visit.
 create table if not exists report_inbox_state (
+  clerk_user_id text primary key,
+  last_seen_at timestamptz not null default now()
+);
+
+-- Same idea as report_inbox_state above, but for the "Red Alerts" feed
+-- instead of "My Reports" -- tracks, per subscriber, the last time they
+-- viewed the Red Alerts tab, so the nav badge in SiteHeader.tsx and the
+-- "New" tags in the feed only count reports posted (alert_sent_at set)
+-- since their last visit.
+create table if not exists red_alert_inbox_state (
   clerk_user_id text primary key,
   last_seen_at timestamptz not null default now()
 );

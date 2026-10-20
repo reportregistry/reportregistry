@@ -32,13 +32,48 @@ async function getUnreadReportCount(userId: string | null): Promise<number> {
   return count || 0;
 }
 
+// Same idea as getUnreadReportCount above, but for the Red Alerts feed
+// (see api/admin/report/alert/route.ts and RedAlertsList.tsx) instead of
+// "My Reports" -- and gated to active subscribers only, since that feed is
+// subscriber-only content. Returns isActive alongside the count so the nav
+// link itself only renders for subscribers, not every signed-in user.
+async function getRedAlertNavInfo(userId: string | null): Promise<{ isActive: boolean; unread: number }> {
+  if (!userId || !isSupabaseConfigured()) return { isActive: false, unread: 0 };
+
+  const supabase = getServiceClient();
+  const { data: subscriber } = await supabase
+    .from('subscribers')
+    .select('status')
+    .eq('clerk_user_id', userId)
+    .maybeSingle();
+  if (subscriber?.status !== 'active') return { isActive: false, unread: 0 };
+
+  const { data: inboxState } = await supabase
+    .from('red_alert_inbox_state')
+    .select('last_seen_at')
+    .eq('clerk_user_id', userId)
+    .maybeSingle();
+  const lastSeenAt = inboxState?.last_seen_at || new Date(0).toISOString();
+
+  const { count } = await supabase
+    .from('reports')
+    .select('id', { count: 'exact', head: true })
+    .not('alert_sent_at', 'is', null)
+    .gt('alert_sent_at', lastSeenAt);
+
+  return { isActive: true, unread: count || 0 };
+}
+
 // Shared across every page via app/layout.tsx, so there's always a way
 // back home and consistent branding/nav -- previously this only existed
 // on the homepage itself, which meant /report, /sign-in, /sign-up, etc.
 // had no header at all.
 export default async function SiteHeader() {
   const { userId } = auth();
-  const unreadCount = await getUnreadReportCount(userId);
+  const [unreadCount, redAlertNav] = await Promise.all([
+    getUnreadReportCount(userId),
+    getRedAlertNavInfo(userId),
+  ]);
 
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-navy/90 backdrop-blur">
@@ -87,6 +122,21 @@ export default async function SiteHeader() {
                 </span>
               )}
             </Link>
+            {redAlertNav.isActive && (
+              <Link
+                href="/dashboard?tab=redAlerts"
+                className={`relative whitespace-nowrap px-2 py-1.5 text-muted transition hover:text-white ${
+                  redAlertNav.unread > 0 ? 'inline' : 'hidden sm:inline'
+                }`}
+              >
+                Red Alerts
+                {redAlertNav.unread > 0 && (
+                  <span className="ml-1 inline-flex min-w-[1.25rem] animate-pulse items-center justify-center rounded-full bg-red px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                    {redAlertNav.unread > 9 ? '9+' : redAlertNav.unread}
+                  </span>
+                )}
+              </Link>
+            )}
             <Link
               href="/dashboard"
               className="whitespace-nowrap rounded-lg bg-gradient-to-br from-red to-orange px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
